@@ -16,6 +16,11 @@
     <aside class="panel panel-left">
       <div class="panel-header">
         <span id="titleLabel">COFFEE WITH A BOOK</span>
+        <div id="langButtons">
+          <button class="langBtn" data-lang="en">EN</button>
+          <button class="langBtn" data-lang="ko">한국어</button>
+          <button classclass="langBtn" data-lang="ja">日本語</button>
+        </div>
       </div>
 
       <div class="time-block">
@@ -39,6 +44,14 @@
           role: guest<br/>
           access: read-only<br/>
           cmd: type <span class="accent">help</span>
+        </div>
+      </div>
+
+      <!-- WEATHER PANEL (LEFT) -->
+      <div class="weather-block">
+        <div class="stats-title" id="weatherTitle">WEATHER</div>
+        <div class="weather-text" id="weatherData">
+          Loading Daegu weather…
         </div>
       </div>
     </aside>
