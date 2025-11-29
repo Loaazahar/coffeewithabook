@@ -1,54 +1,14 @@
-// --- SIMPLE DATA STORE -------------------------------------------------
+let books = [];  // no dummy data
+const STORAGE_KEY = "coffee_console_books";
 
-let books = [
-  {
-    id: 1,
-    title: "The Name of the Rose",
-    author: "Umberto Eco",
-    pagesRead: 156,
-    totalPages: 552,
-    comments: ["Atmosphere is dense but beautiful."],
-    lastUpdate: new Date().toISOString()
-  },
-  {
-    id: 2,
-    title: "Demian",
-    author: "Hermann Hesse",
-    pagesRead: 120,
-    totalPages: 220,
-    comments: ["Reread – still hits differently."],
-    lastUpdate: new Date().toISOString()
-  },
-  {
-    id: 3,
-    title: "Blindness",
-    author: "José Saramago",
-    pagesRead: 0,
-    totalPages: 320,
-    comments: [],
-    lastUpdate: new Date().toISOString()
-  }
-];
+let language = "en";
+let isAdmin = false;
+let currentUser = "guest";
+let commandHistory = [];
+let historyIndex = -1;
 
-// localStorage persistence
-const STORAGE_KEY = "reading_console_books";
-
-function loadBooks() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      books = JSON.parse(saved);
-    } catch (e) {
-      console.warn("Could not parse saved books", e);
-    }
-  }
-}
-
-function saveBooks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-}
-
-// --- DOM REFERENCES ----------------------------------------------------
+const ADMIN_USERNAME = "loaa";
+const ADMIN_PASSWORD = "books!2026";
 
 const outputEl = document.getElementById("terminalOutput");
 const inputEl = document.getElementById("terminalInput");
@@ -63,19 +23,6 @@ const statPagesEl = document.getElementById("stat-pages");
 const recentUpdateEl = document.getElementById("recentUpdate");
 const sessionInfoEl = document.getElementById("sessionInfo");
 
-// --- SESSION STATE -----------------------------------------------------
-
-let isAdmin = false;
-let currentUser = "guest";
-let commandHistory = [];
-let historyIndex = -1;
-
-// change this for yourself (client-side only, for now)
-const ADMIN_USERNAME = "loaa";
-const ADMIN_PASSWORD = "books!2026";
-
-// --- UTILITIES ---------------------------------------------------------
-
 function addLine(text, cls) {
   const line = document.createElement("div");
   line.className = "line" + (cls ? " " + cls : "");
@@ -84,39 +31,50 @@ function addLine(text, cls) {
   outputEl.scrollTop = outputEl.scrollHeight;
 }
 
+function loadBooks() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) books = JSON.parse(saved);
+}
+
+function saveBooks() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+}
+
 function formatBookLine(book) {
   const pct = book.totalPages
     ? Math.round((book.pagesRead / book.totalPages) * 100)
     : 0;
-  return `[#${book.id}] ${book.title} <span class="muted">(${book.author})</span> — ${pct}%`;
+  return `[#${book.id}] ${book.title} — ${pct}%`;
 }
 
 function updateUserLabel() {
   const role = isAdmin ? "admin" : "guest";
-  userLabelEl.textContent = `${currentUser}@reading-console (${role})`;
+  userLabelEl.textContent = `${currentUser}@coffee-console (${role})`;
 }
 
 function updateSessionInfo() {
-  const role = isAdmin ? "admin" : "guest";
-  const access = isAdmin ? "read / write" : "read-only";
   sessionInfoEl.innerHTML =
-    `role: ${role}<br/>access: ${access}<br/>books: ${books.length}`;
+    `role: ${isAdmin ? "admin" : "guest"}<br/>access: ${isAdmin ? "read/write" : "read-only"}`;
 }
-
-// --- CLOCK -------------------------------------------------------------
 
 function updateClock() {
   const now = new Date();
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
+  // Time
+  const hh = now.getHours().toString().padStart(2,"0");
+  const mm = now.getMinutes().toString().padStart(2,"0");
+  const ss = now.getSeconds().toString().padStart(2,"0");
   clockEl.textContent = `${hh}:${mm}:${ss}`;
-  dateEl.textContent = now.toISOString().slice(0, 10);
+
+  // Date — now Korean format
+  dateEl.textContent = now.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  });
 }
 setInterval(updateClock, 1000);
 updateClock();
-
-// --- STATS PANEL -------------------------------------------------------
 
 function refreshStats() {
   const totalBooks = books.length;
@@ -130,23 +88,7 @@ function refreshStats() {
   statFinishedEl.textContent = finished;
   statProgressEl.textContent = inProgress;
   statPagesEl.textContent = pagesRead;
-
-  const latest = [...books].sort(
-    (a, b) => new Date(b.lastUpdate) - new Date(a.lastUpdate)
-  )[0];
-
-  if (latest) {
-    const pct = latest.totalPages
-      ? Math.round((latest.pagesRead / latest.totalPages) * 100)
-      : 0;
-    recentUpdateEl.innerHTML =
-      `[#${latest.id}] ${latest.title}<br>` +
-      `${latest.pagesRead}/${latest.totalPages} pages (${pct}%)<br>` +
-      `<span class="accent-amber">updated: ${new Date(latest.lastUpdate).toLocaleString()}</span>`;
-  }
 }
-
-// --- BOOK STRIP --------------------------------------------------------
 
 function renderBookStrip() {
   bookStripEl.innerHTML = "";
@@ -168,104 +110,87 @@ function renderBookStrip() {
   });
 }
 
-// --- COMMANDS ----------------------------------------------------------
+/* ------- LANGUAGE TOGGLE ------- */
+
+function updateUILabels() {
+  if (language === "ko") {
+    document.getElementById("titleLabel").textContent = "책과 커피";
+    document.getElementById("statLabel").textContent = "세션 / 통계";
+    document.getElementById("sessionTitle").textContent = "세션 정보";
+    document.getElementById("bookshelfLabel").textContent = "책 목록";
+    document.getElementById("shellLabel").textContent = "메인 셸";
+    document.getElementById("activityLabel").textContent = "활동";
+    document.getElementById("streakLabel").textContent = "읽기 기록";
+    document.getElementById("lastUpdateLabel").textContent = "최근 업데이트";
+    document.getElementById("lblBooks").textContent = "책 수";
+    document.getElementById("lblFinished").textContent = "다 읽음";
+    document.getElementById("lblProgress").textContent = "진행중";
+    document.getElementById("lblPages").textContent = "읽은 페이지";
+  } else {
+    document.getElementById("titleLabel").textContent = "COFFEE WITH A BOOK";
+    document.getElementById("statLabel").textContent = "SESSION / STATS";
+    document.getElementById("sessionTitle").textContent = "SESSION INFO";
+    document.getElementById("bookshelfLabel").textContent = "BOOKSHELF";
+    document.getElementById("shellLabel").textContent = "MAIN SHELL";
+    document.getElementById("activityLabel").textContent = "ACTIVITY";
+    document.getElementById("streakLabel").textContent = "READING STREAK";
+    document.getElementById("lastUpdateLabel").textContent = "LAST UPDATE";
+    document.getElementById("lblBooks").textContent = "Books";
+    document.getElementById("lblFinished").textContent = "Finished";
+    document.getElementById("lblProgress").textContent = "In Progress";
+    document.getElementById("lblPages").textContent = "Pages Read";
+  }
+}
+
+/* ------- COMMANDS ------- */
 
 function cmd_help() {
-  addLine("Available commands:", "success");
-  addLine("  help                           – show this help");
-  addLine("  list                           – list all books");
-  addLine("  view <id>                      – view book details");
-  addLine('  search "<text>"                – search by title/author');
-  addLine("  stats                          – show stats");
-  addLine("  login                          – admin login (you)");
-  addLine("  logout                         – leave admin mode");
-  addLine("  clear                          – clear terminal");
-  addLine("Admin-only:", "success");
-  addLine("  add                            – interactive add");
-  addLine("  update <id> <pagesRead>        – update pages");
-  addLine('  comment <id> "<text>"          – add comment');
+addLine("Commands:", "success");
+addLine(" list                 — list books");
+addLine(" view <id>           — view book");
+addLine(" add                 — add new book (admin)");
+addLine(" edit <id>           — edit book details (admin)");
+addLine(" update <id> <page>  — update progress (admin)");
+addLine(" comment <id> <txt>  — add comment (admin)");
+addLine(" login               — admin login");
+addLine(" logout              — exit admin");
+addLine(" lang en|ko          — change UI language");
+}
+
+function cmd_lang(args) {
+  if (!args[0]) return addLine("usage: lang en | ko");
+  language = args[0];
+  updateUILabels();
+  addLine("Language set to " + language,"success");
 }
 
 function cmd_list() {
-  if (!books.length) {
-    addLine("No books in database.", "error");
-    return;
-  }
-  books.forEach(book => {
-    addLine(formatBookLine(book));
-  });
+  if (!books.length) return addLine("No books.");
+  books.forEach(book => addLine(formatBookLine(book)));
 }
 
 function cmd_view(args) {
   const id = Number(args[0]);
-  if (!id) {
-    addLine("Usage: view <id>", "error");
-    return;
-  }
   const book = books.find(b => b.id === id);
-  if (!book) {
-    addLine(`No book with id ${id}.`, "error");
-    return;
-  }
-  const pct = book.totalPages
-    ? Math.round((book.pagesRead / book.totalPages) * 100)
-    : 0;
+  if (!book) return addLine("Book not found");
   addLine(`[#${book.id}] ${book.title}`, "success");
-  addLine(` author    : ${book.author}`);
-  addLine(` progress  : ${book.pagesRead}/${book.totalPages} (${pct}%)`);
-  addLine(` updated   : ${new Date(book.lastUpdate).toLocaleString()}`);
-  if (book.comments && book.comments.length) {
-    addLine(" comments  :");
-    book.comments.slice(-3).forEach(c => addLine(`  - ${c}`));
-  } else {
-    addLine(" comments  : (none)");
+  addLine(`Author: ${book.author}`);
+  addLine(`Pages: ${book.pagesRead}/${book.totalPages}`);
+  if (book.comments.length) {
+    addLine("Comments:");
+    book.comments.forEach(c => addLine("• " + c));
   }
-}
-
-function cmd_search(args) {
-  const query = args.join(" ").toLowerCase();
-  if (!query) {
-    addLine('Usage: search "<text>"', "error");
-    return;
-  }
-  const results = books.filter(
-    b =>
-      b.title.toLowerCase().includes(query) ||
-      b.author.toLowerCase().includes(query)
-  );
-  if (!results.length) {
-    addLine("No matches.", "error");
-  } else {
-    results.forEach(b => addLine(formatBookLine(b)));
-  }
-}
-
-function cmd_stats() {
-  refreshStats();
-  addLine("Stats refreshed.", "success");
-}
-
-function cmd_clear() {
-  outputEl.innerHTML = "";
 }
 
 function cmd_login() {
-  if (isAdmin) {
-    addLine("Already logged in as admin.", "success");
-    return;
-  }
-
   const user = prompt("username:");
   const pass = prompt("password:");
-
   if (user === ADMIN_USERNAME && pass === ADMIN_PASSWORD) {
     isAdmin = true;
     currentUser = user;
-    addLine("Admin access granted.", "success");
+    addLine("Admin access granted","success");
   } else {
-    isAdmin = false;
-    currentUser = "guest";
-    addLine("Invalid credentials.", "error");
+    addLine("Access denied","error");
   }
   updateUserLabel();
   updateSessionInfo();
@@ -276,12 +201,12 @@ function cmd_logout() {
   currentUser = "guest";
   updateUserLabel();
   updateSessionInfo();
-  addLine("Logged out.", "success");
+  addLine("Logged out.","success");
 }
 
 function requireAdmin() {
   if (!isAdmin) {
-    addLine("Permission denied. Admin only.", "error");
+    addLine("Admin only.","error");
     return false;
   }
   return true;
@@ -289,135 +214,107 @@ function requireAdmin() {
 
 function cmd_add() {
   if (!requireAdmin()) return;
-
   const title = prompt("Title:");
-  if (!title) return addLine("Aborted.", "error");
   const author = prompt("Author:");
-  const totalPages = Number(prompt("Total pages:") || "0");
-
-  const newId = books.length ? Math.max(...books.map(b => b.id)) + 1 : 1;
-  const book = {
+  const totalPages = Number(prompt("Total pages:"));
+  const newId = books.length + 1;
+  books.push({
     id: newId,
     title,
-    author: author || "Unknown",
+    author,
     pagesRead: 0,
     totalPages,
     comments: [],
     lastUpdate: new Date().toISOString()
-  };
-  books.push(book);
+  });
   saveBooks();
   refreshStats();
   renderBookStrip();
-  addLine(`Book added with id ${newId}.`, "success");
+  addLine("Book added.","success");
+}
+
+function cmd_edit(args) {
+  if (!requireAdmin()) return;
+  const id = Number(args[0]);
+  const book = books.find(b => b.id === id);
+  if (!book) return addLine("Book not found.");
+
+  const newTitle = prompt("New title:", book.title);
+  const newAuthor = prompt("New author:", book.author);
+  const newTotal = Number(prompt("New total pages:", book.totalPages));
+
+  book.title = newTitle || book.title;
+  book.author = newAuthor || book.author;
+  book.totalPages = newTotal || book.totalPages;
+  book.lastUpdate = new Date().toISOString();
+
+  saveBooks();
+  refreshStats();
+  renderBookStrip();
+  addLine("Book updated.","success");
 }
 
 function cmd_update(args) {
   if (!requireAdmin()) return;
   const id = Number(args[0]);
   const pages = Number(args[1]);
-  if (!id || isNaN(pages)) {
-    addLine("Usage: update <id> <pagesRead>", "error");
-    return;
-  }
   const book = books.find(b => b.id === id);
-  if (!book) {
-    addLine(`No book with id ${id}.`, "error");
-    return;
-  }
-  book.pagesRead = Math.min(pages, book.totalPages || pages);
+  if (!book) return addLine("Not found.");
+  book.pagesRead = pages;
   book.lastUpdate = new Date().toISOString();
   saveBooks();
   refreshStats();
   renderBookStrip();
-  addLine(`Updated book #${id} to ${book.pagesRead} pages.`, "success");
+  addLine("Progress updated.","success");
 }
 
 function cmd_comment(args) {
   if (!requireAdmin()) return;
   const id = Number(args[0]);
-  if (!id) {
-    addLine('Usage: comment <id> "<text>"', "error");
-    return;
-  }
+  const text = args.slice(1).join(" ");
   const book = books.find(b => b.id === id);
-  if (!book) {
-    addLine(`No book with id ${id}.`, "error");
-    return;
-  }
-  const commentText = args.slice(1).join(" ");
-  if (!commentText) {
-    addLine("No comment text.", "error");
-    return;
-  }
-  book.comments = book.comments || [];
-  book.comments.push(commentText);
+  book.comments.push(text);
   book.lastUpdate = new Date().toISOString();
   saveBooks();
-  refreshStats();
-  addLine(`Comment added to #${id}.`, "success");
+  addLine("Comment added.","success");
 }
 
-// --- COMMAND DISPATCH --------------------------------------------------
+/* ------- COMMAND PARSER ------- */
 
 function handleCommand(raw) {
-  const input = raw.trim();
-  if (!input) return;
-
-  commandHistory.unshift(input);
-  historyIndex = -1;
-
-  addLine(`> ${input}`);
-
-  const parts = input.split(" ");
+  if (!raw.trim()) return;
+  addLine("> " + raw);
+  const parts = raw.split(" ");
   const cmd = parts[0].toLowerCase();
   const args = parts.slice(1);
 
-  switch (cmd) {
+  switch(cmd) {
     case "help": cmd_help(); break;
     case "list": cmd_list(); break;
     case "view": cmd_view(args); break;
-    case "search": cmd_search(args); break;
-    case "stats": cmd_stats(); break;
-    case "clear": cmd_clear(); break;
     case "login": cmd_login(); break;
     case "logout": cmd_logout(); break;
+    case "lang": cmd_lang(args); break;
     case "add": cmd_add(); break;
+    case "edit": cmd_edit(args); break;
     case "update": cmd_update(args); break;
     case "comment": cmd_comment(args); break;
-    default:
-      addLine(`Unknown command: ${cmd}`, "error");
+    default: addLine("Unknown command");
   }
 }
 
-// --- INPUT HANDLING ----------------------------------------------------
-
-inputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+inputEl.addEventListener("keydown",e=>{
+  if (e.key==="Enter") {
     const value = inputEl.value;
-    inputEl.value = "";
+    inputEl.value="";
     handleCommand(value);
-  } else if (e.key === "ArrowUp") {
-    if (commandHistory.length) {
-      historyIndex = Math.min(historyIndex + 1, commandHistory.length - 1);
-      inputEl.value = commandHistory[historyIndex] || "";
-      setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
-    }
-    e.preventDefault();
-  } else if (e.key === "ArrowDown") {
-    if (commandHistory.length) {
-      historyIndex = Math.max(historyIndex - 1, -1);
-      inputEl.value = historyIndex === -1 ? "" : commandHistory[historyIndex] || "";
-      setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
-    }
-    e.preventDefault();
   }
 });
 
-// --- INIT --------------------------------------------------------------
-
+/* INIT */
 loadBooks();
 refreshStats();
 renderBookStrip();
 updateUserLabel();
 updateSessionInfo();
+updateUILabels();
