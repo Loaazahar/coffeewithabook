@@ -36,7 +36,7 @@ body {
 
 .dashboard {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  grid-template-columns: 260px 0.85fr 240px;
   grid-template-rows: minmax(0, 1fr) 140px;
   grid-template-areas:
     "left center right"
@@ -388,4 +388,5 @@ body {
       "footer";
   }
 }
+
 
