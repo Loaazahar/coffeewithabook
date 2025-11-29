@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Reading Console</title>
+  <title>Coffee with a Book</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Monospace font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="dashboard">
+
     <!-- LEFT PANEL -->
     <aside class="panel panel-left">
       <div class="panel-header">
-        <span>READING SYSTEM</span>
+        <span id="titleLabel">COFFEE WITH A BOOK</span>
       </div>
 
       <div class="time-block">
@@ -24,25 +24,17 @@
       </div>
 
       <div class="stats-block">
-        <div class="stats-title">SESSION / STATS</div>
+        <div class="stats-title" id="statLabel">SESSION / STATS</div>
         <div class="stats-grid">
-          <div class="stat-row">
-            <span>Books</span><span id="stat-books">0</span>
-          </div>
-          <div class="stat-row">
-            <span>In Progress</span><span id="stat-progress">0</span>
-          </div>
-          <div class="stat-row">
-            <span>Finished</span><span id="stat-finished">0</span>
-          </div>
-          <div class="stat-row">
-            <span>Pages Read</span><span id="stat-pages">0</span>
-          </div>
+          <div class="stat-row"><span id="lblBooks">Books</span><span id="stat-books">0</span></div>
+          <div class="stat-row"><span id="lblProgress">In Progress</span><span id="stat-progress">0</span></div>
+          <div class="stat-row"><span id="lblFinished">Finished</span><span id="stat-finished">0</span></div>
+          <div class="stat-row"><span id="lblPages">Pages Read</span><span id="stat-pages">0</span></div>
         </div>
       </div>
 
       <div class="session-block">
-        <div class="stats-title">SESSION INFO</div>
+        <div class="stats-title" id="sessionTitle">SESSION INFO</div>
         <div class="session-lines" id="sessionInfo">
           role: guest<br/>
           access: read-only<br/>
@@ -54,12 +46,12 @@
     <!-- CENTER TERMINAL -->
     <main class="terminal-area">
       <div class="terminal-header">
-        <span>MAIN SHELL</span>
-        <span id="userLabel">guest@reading-console</span>
+        <span id="shellLabel">MAIN SHELL</span>
+        <span id="userLabel">guest@coffee-console</span>
       </div>
 
       <div class="terminal-output" id="terminalOutput">
-        <div class="line">Welcome to <span class="accent">Reading Console</span>.</div>
+        <div class="line">Welcome to <span class="accent">Coffee with a Book</span> ☕📖</div>
         <div class="line">Type <span class="accent">help</span> for available commands.</div>
       </div>
 
@@ -73,13 +65,12 @@
     <!-- RIGHT PANEL -->
     <aside class="panel panel-right">
       <div class="panel-header">
-        <span>ACTIVITY</span>
+        <span id="activityLabel">ACTIVITY</span>
       </div>
 
       <div class="graph-block">
-        <div class="stats-title">READING STREAK</div>
+        <div class="stats-title" id="streakLabel">READING STREAK</div>
         <div class="fake-graph">
-          <!-- purely decorative lines -->
           <div class="graph-line"></div>
           <div class="graph-line"></div>
           <div class="graph-line"></div>
@@ -87,20 +78,19 @@
       </div>
 
       <div class="recent-block">
-        <div class="stats-title">LAST UPDATE</div>
+        <div class="stats-title" id="lastUpdateLabel">LAST UPDATE</div>
         <div class="recent-text" id="recentUpdate">
           No updates yet.
         </div>
       </div>
     </aside>
 
-    <!-- BOTTOM BOOK BAR -->
+    <!-- BOTTOM BOOK STRIP -->
     <footer class="footer-bar">
-      <div class="footer-header">BOOKSHELF</div>
-      <div class="book-strip" id="bookStrip">
-        <!-- book tiles injected by JS -->
-      </div>
+      <div class="footer-header" id="bookshelfLabel">BOOKSHELF</div>
+      <div class="book-strip" id="bookStrip"></div>
     </footer>
+
   </div>
 
   <script src="app.js"></script>
