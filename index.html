@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reading Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Monospace font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- LEFT PANEL -->
+    <aside class="panel panel-left">
+      <div class="panel-header">
+        <span>READING SYSTEM</span>
+      </div>
+
+      <div class="time-block">
+        <div class="time" id="clock">00:00:00</div>
+        <div class="date" id="date">YYYY-MM-DD</div>
+      </div>
+
+      <div class="stats-block">
+        <div class="stats-title">SESSION / STATS</div>
+        <div class="stats-grid">
+          <div class="stat-row">
+            <span>Books</span><span id="stat-books">0</span>
+          </div>
+          <div class="stat-row">
+            <span>In Progress</span><span id="stat-progress">0</span>
+          </div>
+          <div class="stat-row">
+            <span>Finished</span><span id="stat-finished">0</span>
+          </div>
+          <div class="stat-row">
+            <span>Pages Read</span><span id="stat-pages">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="session-block">
+        <div class="stats-title">SESSION INFO</div>
+        <div class="session-lines" id="sessionInfo">
+          role: guest<br/>
+          access: read-only<br/>
+          cmd: type <span class="accent">help</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER TERMINAL -->
+    <main class="terminal-area">
+      <div class="terminal-header">
+        <span>MAIN SHELL</span>
+        <span id="userLabel">guest@reading-console</span>
+      </div>
+
+      <div class="terminal-output" id="terminalOutput">
+        <div class="line">Welcome to <span class="accent">Reading Console</span>.</div>
+        <div class="line">Type <span class="accent">help</span> for available commands.</div>
+      </div>
+
+      <div class="terminal-input-bar">
+        <span class="prompt-label">></span>
+        <input id="terminalInput" type="text" autocomplete="off" autofocus />
+        <span class="cursor" id="fakeCursor"></span>
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL -->
+    <aside class="panel panel-right">
+      <div class="panel-header">
+        <span>ACTIVITY</span>
+      </div>
+
+      <div class="graph-block">
+        <div class="stats-title">READING STREAK</div>
+        <div class="fake-graph">
+          <!-- purely decorative lines -->
+          <div class="graph-line"></div>
+          <div class="graph-line"></div>
+          <div class="graph-line"></div>
+        </div>
+      </div>
+
+      <div class="recent-block">
+        <div class="stats-title">LAST UPDATE</div>
+        <div class="recent-text" id="recentUpdate">
+          No updates yet.
+        </div>
+      </div>
+    </aside>
+
+    <!-- BOTTOM BOOK BAR -->
+    <footer class="footer-bar">
+      <div class="footer-header">BOOKSHELF</div>
+      <div class="book-strip" id="bookStrip">
+        <!-- book tiles injected by JS -->
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
