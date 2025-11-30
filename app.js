@@ -1,18 +1,23 @@
-// ------------ STATE & STORAGE -------------
-
-let books = []; // start empty; you will add via console
+// ---------- STORAGE KEYS ----------
 const STORAGE_KEY_BOOKS = "coffee_console_books";
 const STORAGE_KEY_LANG = "coffee_console_lang";
+const STORAGE_KEY_USERS = "coffee_console_users_v1";
+const STORAGE_KEY_EVENTS = "coffee_console_events_v1";
 
-let language = localStorage.getItem(STORAGE_KEY_LANG) || "en"; // "en", "ko", "ja"
-let isAdmin = false;
+// ---------- STATE ----------
+let language = localStorage.getItem(STORAGE_KEY_LANG) || "en"; // "en" | "ko" | "ja"
+
+let users = {};          // username -> { role, pass, active }
 let currentUser = "guest";
+let currentRole = "guest"; // "guest" | "admin" | "member"
 
-const ADMIN_USERNAME = "loaa";
-const ADMIN_PASSWORD = "books!2026";
+let books = [];          // [{ id, owner, title, author, totalPages, pagesRead, comments, lastUpdate }]
+let events = [];         // activity events (for feed + streak)
 
-// ------------ DOM ELEMENTS -------------
+// ---------- CONSTANTS ----------
+const DEFAULT_ADMIN = "loaa";
 
+// ---------- DOM ELEMENTS ----------
 const outputEl = document.getElementById("terminalOutput");
 const inputEl = document.getElementById("terminalInput");
 
@@ -28,9 +33,10 @@ const statPagesEl = document.getElementById("stat-pages");
 const recentUpdateEl = document.getElementById("recentUpdate");
 const sessionInfoEl = document.getElementById("sessionInfo");
 const weatherDataEl = document.getElementById("weatherData");
+const feedOutputEl = document.getElementById("feedOutput");
+const streakTextEl = document.getElementById("streakText");
 
-// ------------ UTILITIES -------------
-
+// ---------- UTILITIES ----------
 function addLine(text, cls) {
   const line = document.createElement("div");
   line.className = "line" + (cls ? " " + cls : "");
@@ -39,20 +45,71 @@ function addLine(text, cls) {
   outputEl.scrollTop = outputEl.scrollHeight;
 }
 
+function saveBooks() {
+  localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
+}
+
+function saveUsers() {
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+}
+
+function saveEvents() {
+  localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+}
+
+function loadUsers() {
+  const saved = localStorage.getItem(STORAGE_KEY_USERS);
+  if (saved) {
+    try {
+      users = JSON.parse(saved);
+    } catch {
+      users = {};
+    }
+  } else {
+    users = {};
+  }
+  // ensure default admin exists
+  if (!users[DEFAULT_ADMIN]) {
+    users[DEFAULT_ADMIN] = {
+      role: "admin",
+      pass: "books!2026",
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    saveUsers();
+  }
+}
+
 function loadBooks() {
   const saved = localStorage.getItem(STORAGE_KEY_BOOKS);
   if (saved) {
     try {
       books = JSON.parse(saved);
-    } catch (e) {
-      console.warn("Failed to parse books", e);
+    } catch {
       books = [];
     }
+  } else {
+    books = [];
   }
+  // ensure owner + defaults
+  books.forEach((b) => {
+    if (!b.owner) b.owner = DEFAULT_ADMIN;
+    if (!b.comments) b.comments = [];
+    if (!b.lastUpdate) b.lastUpdate = new Date().toISOString();
+  });
 }
 
-function saveBooks() {
-  localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
+function loadEvents() {
+  const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
+  if (saved) {
+    try {
+      events = JSON.parse(saved);
+    } catch {
+      events = [];
+    }
+  } else {
+    events = [];
+  }
 }
 
 function formatPercent(book) {
@@ -60,33 +117,7 @@ function formatPercent(book) {
   return Math.round((book.pagesRead / book.totalPages) * 100);
 }
 
-function formatBookLine(book) {
-  const pct = formatPercent(book);
-  return `[#${book.id}] ${book.title} — ${pct}%`;
-}
-
-function updateUserLabel() {
-  const role = isAdmin ? "admin" : "guest";
-  userLabelEl.textContent = `${currentUser}@coffee-console (${role})`;
-}
-
-function updateSessionInfo() {
-  const role = isAdmin ? "admin" : "guest";
-  const access = isAdmin ? "read/write" : "read-only";
-  if (language === "ko") {
-    sessionInfoEl.innerHTML =
-      `역할: ${role}<br/>권한: ${access}<br/>cmd: <span class="accent">help</span>`;
-  } else if (language === "ja") {
-    sessionInfoEl.innerHTML =
-      `ロール: ${role}<br/>権限: ${access}<br/>cmd: <span class="accent">help</span>`;
-  } else {
-    sessionInfoEl.innerHTML =
-      `role: ${role}<br/>access: ${access}<br/>cmd: type <span class="accent">help</span>`;
-  }
-}
-
-// ------------ CLOCK & DATE -------------
-
+// ---------- CLOCK & DATE ----------
 function updateClock() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
@@ -119,98 +150,28 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
-// ------------ STATS & ACTIVITY -------------
-
-function refreshStats() {
-  const totalBooks = books.length;
-  const finished = books.filter(
-    (b) => b.totalPages > 0 && b.pagesRead >= b.totalPages
-  ).length;
-  const inProgress = books.filter(
-    (b) => b.pagesRead > 0 && b.totalPages && b.pagesRead < b.totalPages
-  ).length;
-  const pagesRead = books.reduce((sum, b) => sum + (b.pagesRead || 0), 0);
-
-  statBooksEl.textContent = totalBooks;
-  statFinishedEl.textContent = finished;
-  statProgressEl.textContent = inProgress;
-  statPagesEl.textContent = pagesRead;
-
-  updateActivityFromBooks();
+// ---------- SESSION / USER LABEL ----------
+function updateUserLabel() {
+  userLabelEl.textContent = `${currentUser}@coffee-console (${currentRole})`;
 }
 
-function updateActivityFromBooks() {
-  if (!books.length) {
-    recentUpdateEl.textContent =
-      language === "ko"
-        ? "업데이트가 없습니다."
-        : language === "ja"
-        ? "更新はありません。"
-        : "No updates yet.";
-    return;
-  }
-  const latest = [...books].sort(
-    (a, b) => new Date(b.lastUpdate) - new Date(a.lastUpdate)
-  )[0];
-  const pct = formatPercent(latest);
-
-  const timeStr = new Date(latest.lastUpdate).toLocaleString(
-    language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US"
-  );
-
+function updateSessionInfo() {
+  const access = currentRole === "admin" ? "read/write" :
+                 currentRole === "member" ? "read/write" : "read-only";
   if (language === "ko") {
-    recentUpdateEl.innerHTML =
-      `[#${latest.id}] ${latest.title}<br>` +
-      `${latest.pagesRead}/${latest.totalPages} 페이지 (${pct}%)<br>` +
-      `<span class="accent-amber">업데이트: ${timeStr}</span>`;
+    sessionInfoEl.innerHTML =
+      `사용자: ${currentUser}<br/>역할: ${currentRole}<br/>권한: ${access}<br/>cmd: <span class="accent">help</span>`;
   } else if (language === "ja") {
-    recentUpdateEl.innerHTML =
-      `[#${latest.id}] ${latest.title}<br>` +
-      `${latest.pagesRead}/${latest.totalPages} ページ (${pct}%)<br>` +
-      `<span class="accent-amber">更新: ${timeStr}</span>`;
+    sessionInfoEl.innerHTML =
+      `ユーザー: ${currentUser}<br/>ロール: ${currentRole}<br/>権限: ${access}<br/>cmd: <span class="accent">help</span>`;
   } else {
-    recentUpdateEl.innerHTML =
-      `[#${latest.id}] ${latest.title}<br>` +
-      `${latest.pagesRead}/${latest.totalPages} pages (${pct}%)<br>` +
-      `<span class="accent-amber">updated: ${timeStr}</span>`;
+    sessionInfoEl.innerHTML =
+      `user: ${currentUser}<br/>role: ${currentRole}<br/>access: ${access}<br/>cmd: type <span class="accent">help</span>`;
   }
 }
 
-function setActivityCustom(messageEn, messageKo, messageJa) {
-  if (language === "ko" && messageKo) {
-    recentUpdateEl.textContent = messageKo;
-  } else if (language === "ja" && messageJa) {
-    recentUpdateEl.textContent = messageJa;
-  } else {
-    recentUpdateEl.textContent = messageEn;
-  }
-}
-
-// ------------ BOOK STRIP -------------
-
-function renderBookStrip() {
-  bookStripEl.innerHTML = "";
-  books.forEach((book) => {
-    const pct = formatPercent(book);
-    const tile = document.createElement("button");
-    tile.className = "book-tile" + (pct >= 100 ? " finished" : "");
-    const progressText = `${book.pagesRead}/${book.totalPages} (${pct}%)`;
-    tile.innerHTML = `
-      <span class="title">${book.title}</span>
-      <span class="meta">${book.author}</span>
-      <span class="progress">${progressText}</span>
-    `;
-    tile.addEventListener("click", () => {
-      cmd_view([String(book.id)]);
-    });
-    bookStripEl.appendChild(tile);
-  });
-}
-
-// ------------ LANGUAGE LABELS -------------
-
+// ---------- LANGUAGE LABELS ----------
 function updateUILabels() {
-  // highlight active button
   document.querySelectorAll(".langBtn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.lang === language);
   });
@@ -229,22 +190,26 @@ function updateUILabels() {
   t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
   t("activityLabel", "ACTIVITY", "활동", "アクティビティ");
   t("streakLabel", "READING STREAK", "읽기 기록", "読書記録");
-  t("lastUpdateLabel", "LAST UPDATE", "최근 업데이트", "最新更新");
+  t("lastUpdateLabel", "RECENT ACTIVITY", "최근 활동", "最近のアクティビティ");
   t("weatherTitle", "WEATHER", "날씨", "天気");
   t("lblBooks", "Books", "책 수", "冊数");
   t("lblFinished", "Finished", "다 읽음", "読了");
   t("lblProgress", "In Progress", "진행중", "進行中");
-  t("lblPages", "Pages Read", "읽은 페이지", "読んだページ数");
+  t("lblPages", "Pages Read", "읽은 페이지", "読んだページ수");
+  t("feedTitleLabel", "GLOBAL READING FEED", "전체 읽기 피드", "グローバル読書フィード");
 
   updateSessionInfo();
   updateClock();
   refreshStats();
-  fetchWeather(); // re-render weather text in new language
+  renderFeed();
+  updateActivitySidebar();
+  updateStreak();
+  fetchWeather();
+
   localStorage.setItem(STORAGE_KEY_LANG, language);
 }
 
-// ------------ LANGUAGE BUTTON EVENTS -------------
-
+// language button clicks
 document.querySelectorAll(".langBtn").forEach((btn) => {
   btn.addEventListener("click", () => {
     language = btn.dataset.lang;
@@ -252,9 +217,248 @@ document.querySelectorAll(".langBtn").forEach((btn) => {
   });
 });
 
-// ------------ WEATHER (DAEGU) -------------
+// ---------- STATS ----------
+function refreshStats() {
+  const totalBooks = books.length;
+  const finished = books.filter(
+    (b) => b.totalPages > 0 && b.pagesRead >= b.totalPages
+  ).length;
+  const inProgress = books.filter(
+    (b) => b.pagesRead > 0 && b.totalPages && b.pagesRead < b.totalPages
+  ).length;
+  const pagesRead = books.reduce((sum, b) => sum + (b.pagesRead || 0), 0);
 
-// Daegu coords
+  statBooksEl.textContent = totalBooks;
+  statFinishedEl.textContent = finished;
+  statProgressEl.textContent = inProgress;
+  statPagesEl.textContent = pagesRead;
+}
+
+// ---------- BOOK STRIP ----------
+function renderBookStrip() {
+  bookStripEl.innerHTML = "";
+  books.forEach((book) => {
+    const pct = formatPercent(book);
+    const tile = document.createElement("button");
+    tile.className = "book-tile" + (pct >= 100 ? " finished" : "");
+    const progressText = `${book.pagesRead}/${book.totalPages} (${pct}%)`;
+    tile.innerHTML = `
+      <span class="title">${book.title}</span>
+      <span class="meta">${book.author} • ${book.owner}</span>
+      <span class="progress">${progressText}</span>
+    `;
+    tile.addEventListener("click", () => {
+      cmd_view([String(book.id)]);
+    });
+    bookStripEl.appendChild(tile);
+  });
+}
+
+// ---------- EVENTS / FEED / ACTIVITY ----------
+function logEvent(ev) {
+  ev.timestamp = ev.timestamp || new Date().toISOString();
+  events.push(ev);
+  saveEvents();
+  renderFeed();
+  updateActivitySidebar();
+  updateStreak();
+}
+
+function renderFeed() {
+  feedOutputEl.innerHTML = "";
+  const relevant = events.filter((ev) =>
+    ["progress", "comment", "book_add"].includes(ev.type)
+  );
+  if (!relevant.length) {
+    const line = document.createElement("div");
+    line.className = "line";
+    line.textContent =
+      language === "ko"
+        ? "아직 활동이 없습니다."
+        : language === "ja"
+        ? "まだ活動はありません。"
+        : "No activity yet.";
+    feedOutputEl.appendChild(line);
+    return;
+  }
+
+  // group by user -> book
+  const grouped = {};
+  relevant.forEach((ev) => {
+    const user = ev.ownerUser || ev.user || "unknown";
+    if (!grouped[user]) grouped[user] = {};
+    const key = ev.bookId ? `${ev.bookId}::${ev.bookTitle}` : ev.bookTitle || "-";
+    if (!grouped[user][key]) grouped[user][key] = [];
+    grouped[user][key].push(ev);
+  });
+
+  const usersSorted = Object.keys(grouped).sort();
+
+  usersSorted.forEach((user) => {
+    const userDiv = document.createElement("div");
+    userDiv.className = "feed-user";
+
+    const userName = document.createElement("div");
+    userName.className = "feed-user-name";
+    userName.textContent = user;
+    userDiv.appendChild(userName);
+
+    const booksMap = grouped[user];
+    const bookKeys = Object.keys(booksMap);
+
+    bookKeys.forEach((bKey) => {
+      const eventsForBook = booksMap[bKey].slice().sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
+      const sample = eventsForBook[0];
+      const bookTitle = sample.bookTitle || "(no title)";
+      const bookDiv = document.createElement("div");
+      bookDiv.className = "feed-book";
+
+      const titleLine = document.createElement("div");
+      titleLine.className = "feed-book-title";
+      titleLine.textContent = `📕 ${bookTitle}`;
+      bookDiv.appendChild(titleLine);
+
+      eventsForBook.slice(0, 3).forEach((ev) => {
+        const eventDiv = document.createElement("div");
+        eventDiv.className = "feed-event";
+
+        const from = ev.fromPages ?? null;
+        const to = ev.toPages ?? null;
+        const delta = typeof ev.deltaPages === "number" ? ev.deltaPages : null;
+
+        const lines = [];
+
+        lines.push(`👤 ${user}`);
+
+        if (from !== null && to !== null) {
+          lines.push(`⬆️ ${from} → ${to}${delta ? ` (+${delta})` : ""}`);
+        }
+
+        if (ev.type === "comment" && ev.commentText) {
+          lines.push(`💬 "${ev.commentText}"`);
+        }
+
+        const time = new Date(ev.timestamp);
+        const timeStr = time.toLocaleString(
+          language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US",
+          { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
+        );
+        lines.push(`🕒 ${timeStr}`);
+
+        eventDiv.innerHTML = lines.join("<br>");
+        bookDiv.appendChild(eventDiv);
+      });
+
+      userDiv.appendChild(bookDiv);
+    });
+
+    feedOutputEl.appendChild(userDiv);
+  });
+}
+
+function updateActivitySidebar() {
+  if (!events.length) {
+    recentUpdateEl.textContent =
+      language === "ko"
+        ? "활동이 없습니다."
+        : language === "ja"
+        ? "活動はありません。"
+        : "No activity yet.";
+    return;
+  }
+  const latest = events.slice().sort(
+    (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+  )[0];
+
+  let text = "";
+  const user = latest.user || latest.ownerUser || "unknown";
+
+  if (latest.type === "book_add") {
+    text = `${user} added "${latest.bookTitle}"`;
+  } else if (latest.type === "progress") {
+    text = `${user} updated "${latest.bookTitle}" ${latest.fromPages}→${latest.toPages}`;
+  } else if (latest.type === "comment") {
+    text = `${user} commented on "${latest.bookTitle}"`;
+  } else if (latest.type === "user_add") {
+    text = `${user} created user "${latest.targetUser}"`;
+  } else if (latest.type === "user_remove") {
+    text = `${user} removed user "${latest.targetUser}"`;
+  } else if (latest.type === "book_remove") {
+    text = `${user} removed book "${latest.bookTitle}"`;
+  } else {
+    text = `${user} did ${latest.type}`;
+  }
+
+  recentUpdateEl.textContent = text;
+}
+
+// ---------- STREAK ----------
+function updateStreak() {
+  // streak for currentUser (progress events)
+  const myEvents = events.filter(
+    (ev) => ev.type === "progress" && (ev.ownerUser === currentUser || ev.user === currentUser)
+  );
+  if (!myEvents.length) {
+    streakTextEl.textContent =
+      language === "ko"
+        ? "아직 읽기 기록이 없습니다."
+        : language === "ja"
+        ? "まだ読書記録はありません。"
+        : "No reading streak yet.";
+    return;
+  }
+
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ key, date: d, pages: 0 });
+  }
+
+  myEvents.forEach((ev) => {
+    const dayKey = ev.timestamp.slice(0, 10);
+    let delta = ev.deltaPages;
+    if (typeof delta !== "number") {
+      const from = ev.fromPages ?? 0;
+      const to = ev.toPages ?? from;
+      delta = to - from;
+    }
+    days.forEach((d) => {
+      if (d.key === dayKey) d.pages += Math.max(delta, 0);
+    });
+  });
+
+  // compute streak (consecutive days from today backward)
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].pages > 0) streak++;
+    else break;
+  }
+
+  const lines = [];
+  if (language === "ko") {
+    lines.push(`연속 일수: ${streak}일`);
+  } else if (language === "ja") {
+    lines.push(`連続日数: ${streak}日`);
+  } else {
+    lines.push(`Streak: ${streak} day(s)`);
+  }
+
+  days.forEach((d) => {
+    const wd = getWeekdayName(d.date.getDay());
+    const has = d.pages > 0;
+    const mark = has ? "✔" : "✖";
+    lines.push(`${wd}: ${mark} ${d.pages} pages`);
+  });
+
+  streakTextEl.innerHTML = lines.join("<br>");
+}
+
+// ---------- WEATHER (DAEGU) ----------
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
 
@@ -313,7 +517,6 @@ async function fetchWeather() {
     const temp = cw.temperature;
     const wCode = cw.weathercode;
 
-    // find humidity from hourly
     let humidity = null;
     if (data.hourly) {
       const tIndex = data.hourly.time.indexOf(cw.time);
@@ -322,65 +525,50 @@ async function fetchWeather() {
       }
     }
 
-    // daily forecast (index 0 = today)
     const dTimes = data.daily.time;
     const dMax = data.daily.temperature_2m_max;
     const dMin = data.daily.temperature_2m_min;
     const dCodes = data.daily.weathercode;
 
-    let lines = [];
+    const lines = [];
 
-    // Today line
+    let headingLine, todayLine, humStr, nextTitle;
     const condText = weatherCodeToText(wCode);
-    let todayLine, feelsStr, humStr, headingLine, nextTitle;
 
     if (language === "ko") {
       headingLine = "대구 날씨";
       todayLine = `오늘: ${temp}°C, ${condText}`;
-      feelsStr = ""; // open-meteo doesn't give feels-like; skip
       humStr = humidity != null ? `습도: ${humidity}%` : "";
       nextTitle = "3일 예보:";
     } else if (language === "ja") {
       headingLine = "大邱の天気";
       todayLine = `今日: ${temp}°C, ${condText}`;
-      feelsStr = "";
       humStr = humidity != null ? `湿度: ${humidity}%` : "";
       nextTitle = "3日間の予報:";
     } else {
       headingLine = "DAEGU WEATHER";
       todayLine = `Today: ${temp}°C, ${condText}`;
-      feelsStr = "";
       humStr = humidity != null ? `Humidity: ${humidity}%` : "";
       nextTitle = "Next 3 days:";
     }
 
     lines.push(headingLine);
     lines.push(todayLine);
-    if (feelsStr) lines.push(feelsStr);
     if (humStr) lines.push(humStr);
     lines.push("");
     lines.push(nextTitle);
 
-    // next 3 days (1,2,3)
     for (let i = 1; i <= 3 && i < dTimes.length; i++) {
       const dDate = new Date(dTimes[i]);
       const wd = getWeekdayName(dDate.getDay());
       const max = dMax[i];
       const min = dMin[i];
       const dCond = weatherCodeToText(dCodes[i]);
-
-      if (language === "ko") {
-        lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
-      } else if (language === "ja") {
-        lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
-      } else {
-        lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
-      }
+      lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
     }
 
     weatherDataEl.innerHTML = lines.join("<br>");
   } catch (e) {
-    console.error(e);
     weatherDataEl.textContent =
       language === "ko"
         ? "날씨 정보를 가져오는 중 오류 발생."
@@ -390,31 +578,60 @@ async function fetchWeather() {
   }
 }
 
-// ------------ COMMANDS -------------
-
-function cmd_help() {
-  addLine("Commands:", "success");
-  addLine("  help                 – show this help");
-  addLine("  list                 – list books");
-  addLine("  view <id>            – view one book");
-  addLine("  weather              – refresh Daegu weather");
-  addLine("  login                – admin login");
-  addLine("  logout               – logout admin");
-  addLine("Admin:");
-  addLine("  add                  – add new book");
-  addLine("  edit <id>            – edit book meta");
-  addLine("  update <id> <page>   – update pages read");
-  addLine("  comment <id> <text>  – add comment");
-  addLine("Language:");
-  addLine("  lang en|ko|ja        – change UI language (or click buttons)");
+// ---------- PERMISSIONS ----------
+function requireAdmin() {
+  if (currentRole !== "admin") {
+    addLine("Admin only.", "error");
+    return false;
+  }
+  return true;
 }
 
-function cmd_list() {
-  if (!books.length) {
+function canEditBook(book) {
+  return currentRole === "admin" || book.owner === currentUser;
+}
+
+// ---------- COMMANDS ----------
+function cmd_help() {
+  addLine("Commands:", "success");
+  addLine("  help                   – show this help");
+  addLine("  list [user]            – list books (all or by user)");
+  addLine("  view <id>              – view one book");
+  addLine("  weather                – refresh Daegu weather");
+  addLine("  lang en|ko|ja          – change UI language");
+  addLine("  login                  – login as user");
+  addLine("  logout                 – logout to guest");
+  addLine("Admin:");
+  addLine("  createuser <name>      – create member");
+  addLine("  removeuser <name>      – remove user");
+  addLine("  listusers              – list users");
+  addLine("  add                    – add new book (for you)");
+  addLine("  edit <id>              – edit book meta");
+  addLine("  update <id> <page>     – update pages read");
+  addLine("  comment <id> <text>    – add comment");
+  addLine("  remove <id>            – remove book");
+}
+
+function cmd_list(args) {
+  let targetUser = args[0];
+  let list = books;
+  if (targetUser) {
+    list = books.filter((b) => b.owner === targetUser);
+    if (!list.length) {
+      addLine("No books for user " + targetUser, "error");
+      return;
+    }
+  }
+  if (!list.length) {
     addLine("No books.", "error");
     return;
   }
-  books.forEach((b) => addLine(formatBookLine(b)));
+  list.forEach((b) => {
+    const pct = formatPercent(b);
+    addLine(
+      `[#${b.id}] ${b.title} — ${pct}% (${b.pagesRead}/${b.totalPages}) • ${b.owner}`
+    );
+  });
 }
 
 function cmd_view(args) {
@@ -427,10 +644,18 @@ function cmd_view(args) {
   const pct = formatPercent(book);
   addLine(`[#${book.id}] ${book.title}`, "success");
   addLine(`Author: ${book.author}`);
+  addLine(`Owner: ${book.owner}`);
   addLine(`Progress: ${book.pagesRead}/${book.totalPages} (${pct}%)`);
   if (book.comments && book.comments.length) {
     addLine("Comments:");
-    book.comments.forEach((c) => addLine(" • " + c));
+    book.comments.forEach((c) => {
+      const ts = new Date(c.timestamp).toLocaleString(
+        language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US"
+      );
+      addLine(
+        ` • [${c.user}] @${c.pagesAt}p "${c.text}" (${ts})`
+      );
+    });
   }
 }
 
@@ -446,37 +671,103 @@ function cmd_lang(args) {
 }
 
 function cmd_login() {
-  const user = prompt("username:");
+  const username = prompt("username:");
   const pass = prompt("password:");
-  if (user === ADMIN_USERNAME && pass === ADMIN_PASSWORD) {
-    isAdmin = true;
-    currentUser = user;
-    addLine("Admin access granted.", "success");
-  } else {
-    addLine("Access denied.", "error");
+  if (!username || !pass) {
+    addLine("Login cancelled.", "error");
+    return;
   }
+  const u = users[username];
+  if (!u || !u.active || u.pass !== pass) {
+    addLine("Invalid credentials.", "error");
+    return;
+  }
+  currentUser = username;
+  currentRole = u.role;
   updateUserLabel();
   updateSessionInfo();
+  addLine("Logged in as " + username + " (" + currentRole + ").", "success");
 }
 
 function cmd_logout() {
-  isAdmin = false;
   currentUser = "guest";
+  currentRole = "guest";
   updateUserLabel();
   updateSessionInfo();
   addLine("Logged out.", "success");
 }
 
-function requireAdmin() {
-  if (!isAdmin) {
-    addLine("Admin only.", "error");
-    return false;
+function cmd_createuser(args) {
+  if (!requireAdmin()) return;
+  let username = args[0];
+  if (!username) {
+    username = prompt("username:");
   }
-  return true;
+  if (!username) {
+    addLine("No username provided.", "error");
+    return;
+  }
+  if (users[username]) {
+    addLine("User already exists.", "error");
+    return;
+  }
+  const pass = prompt("password:");
+  if (!pass) {
+    addLine("No password provided.", "error");
+    return;
+  }
+  users[username] = {
+    role: "member",
+    pass,
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  saveUsers();
+  addLine("User created: " + username, "success");
+  logEvent({ type: "user_add", user: currentUser, targetUser: username });
+}
+
+function cmd_removeuser(args) {
+  if (!requireAdmin()) return;
+  const username = args[0];
+  if (!username) {
+    addLine("Usage: removeuser <username>", "error");
+    return;
+  }
+  if (username === DEFAULT_ADMIN) {
+    addLine("Cannot remove default admin.", "error");
+    return;
+  }
+  if (!users[username]) {
+    addLine("User not found.", "error");
+    return;
+  }
+  delete users[username];
+  saveUsers();
+  addLine("User removed: " + username, "success");
+  logEvent({ type: "user_remove", user: currentUser, targetUser: username });
+}
+
+function cmd_listusers() {
+  if (!requireAdmin()) return;
+  const admins = Object.entries(users)
+    .filter(([_, u]) => u.role === "admin")
+    .map(([name]) => name);
+  const members = Object.entries(users)
+    .filter(([_, u]) => u.role === "member")
+    .map(([name]) => name);
+
+  addLine("Admins:", "success");
+  admins.forEach((n) => addLine("  - " + n));
+  addLine("Members:", "success");
+  members.forEach((n) => addLine("  - " + n));
 }
 
 function cmd_add() {
-  if (!requireAdmin()) return;
+  if (currentRole === "guest") {
+    addLine("Login required to add books.", "error");
+    return;
+  }
   const title = prompt("Title:");
   const author = prompt("Author:");
   const total = Number(prompt("Total pages:"));
@@ -485,56 +776,64 @@ function cmd_add() {
     return;
   }
   const id = books.length ? Math.max(...books.map((b) => b.id)) + 1 : 1;
-  books.push({
+  const book = {
     id,
+    owner: currentUser,
     title,
     author: author || "Unknown",
     pagesRead: 0,
     totalPages: total,
     comments: [],
     lastUpdate: new Date().toISOString(),
-  });
+  };
+  books.push(book);
   saveBooks();
   refreshStats();
   renderBookStrip();
-  setActivityCustom(
-    `Added book: ${title}`,
-    `책 추가: ${title}`,
-    `本を追加: ${title}`
-  );
   addLine(`Book added with id ${id}.`, "success");
+  logEvent({
+    type: "book_add",
+    user: currentUser,
+    ownerUser: currentUser,
+    bookId: id,
+    bookTitle: title,
+  });
 }
 
 function cmd_edit(args) {
-  if (!requireAdmin()) return;
+  if (currentRole === "guest") {
+    addLine("Login required.", "error");
+    return;
+  }
   const id = Number(args[0]);
   const book = books.find((b) => b.id === id);
   if (!book) {
     addLine("Book not found.", "error");
     return;
   }
+  if (!canEditBook(book)) {
+    addLine("Not your book.", "error");
+    return;
+  }
   const newTitle = prompt("New title:", book.title);
   const newAuthor = prompt("New author:", book.author);
   const newTotal = Number(prompt("New total pages:", book.totalPages));
 
-  book.title = newTitle || book.title;
-  book.author = newAuthor || book.author;
+  if (newTitle) book.title = newTitle;
+  if (newAuthor) book.author = newAuthor;
   if (newTotal) book.totalPages = newTotal;
   book.lastUpdate = new Date().toISOString();
-
   saveBooks();
   refreshStats();
   renderBookStrip();
-  setActivityCustom(
-    `Edited book #${id}`,
-    `책 #${id} 수정`,
-    `本 #${id} を編集`
-  );
   addLine("Book updated.", "success");
 }
 
 function cmd_update(args) {
-  if (!requireAdmin()) return;
+  if (currentRole === "guest") {
+    addLine("Login required.", "error");
+    return;
+  }
   const id = Number(args[0]);
   const pages = Number(args[1]);
   const book = books.find((b) => b.id === id);
@@ -542,21 +841,37 @@ function cmd_update(args) {
     addLine("Usage: update <id> <page>", "error");
     return;
   }
+  if (!canEditBook(book)) {
+    addLine("Not your book.", "error");
+    return;
+  }
+  const from = book.pagesRead || 0;
   book.pagesRead = Math.min(pages, book.totalPages || pages);
   book.lastUpdate = new Date().toISOString();
   saveBooks();
   refreshStats();
   renderBookStrip();
-  setActivityCustom(
-    `Updated #${id} to ${book.pagesRead}/${book.totalPages}`,
-    `#${id}: ${book.pagesRead}/${book.totalPages}페이지`,
-    `#${id}: ${book.pagesRead}/${book.totalPages}ページ`
-  );
   addLine("Progress updated.", "success");
+
+  const to = book.pagesRead;
+  const delta = to - from;
+  logEvent({
+    type: "progress",
+    user: currentUser,
+    ownerUser: book.owner,
+    bookId: book.id,
+    bookTitle: book.title,
+    fromPages: from,
+    toPages: to,
+    deltaPages: delta,
+  });
 }
 
 function cmd_comment(args) {
-  if (!requireAdmin()) return;
+  if (currentRole === "guest") {
+    addLine("Login required.", "error");
+    return;
+  }
   const id = Number(args[0]);
   if (!id) {
     addLine("Usage: comment <id> <text>", "error");
@@ -572,16 +887,59 @@ function cmd_comment(args) {
     addLine("No comment text.", "error");
     return;
   }
-  book.comments.push(text);
-  book.lastUpdate = new Date().toISOString();
+  const comment = {
+    user: currentUser,
+    text,
+    pagesAt: book.pagesRead || 0,
+    timestamp: new Date().toISOString(),
+  };
+  book.comments.push(comment);
+  book.lastUpdate = comment.timestamp;
   saveBooks();
   refreshStats();
-  setActivityCustom(
-    `Comment added on #${id}`,
-    `#${id}에 댓글 추가`,
-    `#${id} にコメント追加`
-  );
   addLine("Comment added.", "success");
+
+  logEvent({
+    type: "comment",
+    user: currentUser,
+    ownerUser: book.owner,
+    bookId: book.id,
+    bookTitle: book.title,
+    fromPages: book.pagesRead,
+    toPages: book.pagesRead,
+    deltaPages: 0,
+    commentText: text,
+  });
+}
+
+function cmd_remove(args) {
+  if (currentRole === "guest") {
+    addLine("Login required.", "error");
+    return;
+  }
+  const id = Number(args[0]);
+  const idx = books.findIndex((b) => b.id === id);
+  if (idx === -1) {
+    addLine("Book not found.", "error");
+    return;
+  }
+  const book = books[idx];
+  if (!canEditBook(book)) {
+    addLine("Not your book.", "error");
+    return;
+  }
+  books.splice(idx, 1);
+  saveBooks();
+  refreshStats();
+  renderBookStrip();
+  addLine("Book removed.", "success");
+  logEvent({
+    type: "book_remove",
+    user: currentUser,
+    ownerUser: book.owner,
+    bookId: book.id,
+    bookTitle: book.title,
+  });
 }
 
 function cmd_weather() {
@@ -596,8 +954,7 @@ function cmd_weather() {
   fetchWeather();
 }
 
-// ------------ COMMAND DISPATCH -------------
-
+// ---------- COMMAND DISPATCH ----------
 function handleCommand(input) {
   const raw = input.trim();
   if (!raw) return;
@@ -609,23 +966,26 @@ function handleCommand(input) {
 
   switch (cmd) {
     case "help": cmd_help(); break;
-    case "list": cmd_list(); break;
+    case "list": cmd_list(args); break;
     case "view": cmd_view(args); break;
     case "lang": cmd_lang(args); break;
     case "login": cmd_login(); break;
     case "logout": cmd_logout(); break;
+    case "createuser": cmd_createuser(args); break;
+    case "removeuser": cmd_removeuser(args); break;
+    case "listusers": cmd_listusers(); break;
     case "add": cmd_add(); break;
     case "edit": cmd_edit(args); break;
     case "update": cmd_update(args); break;
     case "comment": cmd_comment(args); break;
+    case "remove": cmd_remove(args); break;
     case "weather": cmd_weather(); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
 }
 
-// ------------ INPUT HANDLER -------------
-
+// ---------- INPUT HANDLER ----------
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const v = inputEl.value;
@@ -634,11 +994,12 @@ inputEl.addEventListener("keydown", (e) => {
   }
 });
 
-// ------------ INIT -------------
-
+// ---------- INIT ----------
+loadUsers();
 loadBooks();
+loadEvents();
 updateUserLabel();
 updateClock();
 refreshStats();
 renderBookStrip();
-updateUILabels(); // also fetches weather
+updateUILabels(); // also fetches weather, feed, activity, streak
