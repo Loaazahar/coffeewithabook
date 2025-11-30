@@ -595,17 +595,18 @@ function canEditBook(book) {
 function cmd_help() {
   addLine("Commands:", "success");
   addLine("  help                   – show this help");
-  addLine("  list [user]            – list books (all or by user)");
+  addLine("  list [user]            – list books");
   addLine("  view <id>              – view one book");
   addLine("  weather                – refresh Daegu weather");
   addLine("  lang en|ko|ja          – change UI language");
   addLine("  login                  – login as user");
-  addLine("  logout                 – logout to guest");
+  addLine("  logout                 – logout");
+  addLine("  changepass             – change your password");
   addLine("Admin:");
-  addLine("  createuser <name>      – create member");
+  addLine("  createuser <name>      – create user");
   addLine("  removeuser <name>      – remove user");
-  addLine("  listusers              – list users");
-  addLine("  add                    – add new book (for you)");
+  addLine("  setpass <username>     – set password for a user");
+  addLine("  add                    – add new book");
   addLine("  edit <id>              – edit book meta");
   addLine("  update <id> <page>     – update pages read");
   addLine("  comment <id> <text>    – add comment");
@@ -942,6 +943,57 @@ function cmd_remove(args) {
   });
 }
 
+function cmd_changepass() {
+  if (currentUser === "guest") {
+    addLine("Login required.", "error");
+    return;
+  }
+  const oldp = prompt("Old password:");
+  if (!oldp) return;
+  if (users[currentUser].pass !== oldp) {
+    addLine("Incorrect password.", "error");
+    return;
+  }
+  const newp = prompt("New password:");
+  if (!newp) {
+    addLine("No new password entered.", "error");
+    return;
+  }
+  users[currentUser].pass = newp;
+  saveUsers();
+  addLine("Password updated.", "success");
+  logEvent({
+    type: "password_self",
+    user: currentUser
+  });
+}
+
+function cmd_setpass(args) {
+  if (!requireAdmin()) return;
+  const target = args[0];
+  if (!target) {
+    addLine("Usage: setpass <username>", "error");
+    return;
+  }
+  if (!users[target]) {
+    addLine("User not found.", "error");
+    return;
+  }
+  const newp = prompt(`New password for ${target}:`);
+  if (!newp) {
+    addLine("No new password entered.", "error");
+    return;
+  }
+  users[target].pass = newp;
+  saveUsers();
+  addLine(`Password reset for ${target}`, "success");
+  logEvent({
+    type: "password_admin",
+    user: currentUser,
+    targetUser: target
+  });
+}
+
 function cmd_weather() {
   addLine(
     language === "ko"
@@ -980,6 +1032,8 @@ function handleCommand(input) {
     case "comment": cmd_comment(args); break;
     case "remove": cmd_remove(args); break;
     case "weather": cmd_weather(); break;
+    case "changepass": cmd_changepass(); break;
+    case "setpass": cmd_setpass(args); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
@@ -1003,3 +1057,4 @@ updateClock();
 refreshStats();
 renderBookStrip();
 updateUILabels(); // also fetches weather, feed, activity, streak
+
