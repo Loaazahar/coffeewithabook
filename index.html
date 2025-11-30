@@ -56,22 +56,37 @@
       </div>
     </aside>
 
-    <!-- CENTER TERMINAL -->
+    <!-- CENTER: FEED + SHELL -->
     <main class="terminal-area">
-      <div class="terminal-header">
-        <span id="shellLabel">MAIN SHELL</span>
-        <span id="userLabel">guest@coffee-console</span>
-      </div>
 
-      <div class="terminal-output" id="terminalOutput">
-        <div class="line">Welcome to <span class="accent">Coffee with a Book</span> ☕📖</div>
-        <div class="line">Type <span class="accent">help</span> for available commands.</div>
-      </div>
+      <!-- UPPER: GLOBAL READING FEED -->
+      <section class="feed-block">
+        <div class="terminal-header">
+          <span id="feedTitleLabel">GLOBAL READING FEED</span>
+        </div>
+        <div class="feed-output" id="feedOutput">
+          <div class="line">No activity yet.</div>
+        </div>
+      </section>
 
-      <div class="terminal-input-bar">
-        <span class="prompt-label">></span>
-        <input id="terminalInput" type="text" autocomplete="off" autofocus />
-      </div>
+      <!-- LOWER: SHELL -->
+      <section class="shell-block">
+        <div class="terminal-header">
+          <span id="shellLabel">MAIN SHELL</span>
+          <span id="userLabel">guest@coffee-console (guest)</span>
+        </div>
+
+        <div class="terminal-output" id="terminalOutput">
+          <div class="line">Welcome to <span class="accent">Coffee with a Book</span> ☕📖</div>
+          <div class="line">Type <span class="accent">help</span> for available commands.</div>
+        </div>
+
+        <div class="terminal-input-bar">
+          <span class="prompt-label">></span>
+          <input id="terminalInput" type="text" autocomplete="off" autofocus />
+        </div>
+      </section>
+
     </main>
 
     <!-- RIGHT PANEL -->
@@ -87,12 +102,15 @@
           <div class="graph-line"></div>
           <div class="graph-line"></div>
         </div>
+        <div class="recent-text" id="streakText">
+          No streak yet.
+        </div>
       </div>
 
       <div class="recent-block">
-        <div class="stats-title" id="lastUpdateLabel">LAST UPDATE</div>
+        <div class="stats-title" id="lastUpdateLabel">RECENT ACTIVITY</div>
         <div class="recent-text" id="recentUpdate">
-          No updates yet.
+          No activity yet.
         </div>
       </div>
     </aside>
@@ -108,4 +126,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
