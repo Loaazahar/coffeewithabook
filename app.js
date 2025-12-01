@@ -1,80 +1,113 @@
-// =======================
-// STORAGE KEYS & STATE
-// =======================
-const STORAGE_KEY_LANG   = "coffee_lang";
-const STORAGE_KEY_USERS  = "coffee_users";
-const STORAGE_KEY_BOOKS  = "coffee_books";
-const STORAGE_KEY_EVENTS = "coffee_events";
+// ---------- STORAGE KEYS ----------
+const STORAGE_KEY_BOOKS = "coffee_console_books";
+const STORAGE_KEY_LANG = "coffee_console_lang";
+const STORAGE_KEY_USERS = "coffee_console_users_v1";
+const STORAGE_KEY_EVENTS = "coffee_console_events_v1";
 
-let language    = localStorage.getItem(STORAGE_KEY_LANG) || "en";
+// ---------- STATE ----------
+let language = localStorage.getItem(STORAGE_KEY_LANG) || "en"; // "en" | "ko" | "ja"
+
+let users = {};          // username -> { role, pass, active }
 let currentUser = "guest";
-let currentRole = "guest";
+let currentRole = "guest"; // "guest" | "admin" | "member"
 
-let users  = {};
-let books  = [];
-let events = [];
+let books = [];          // [{ id, owner, title, author, totalPages, pagesRead, comments, lastUpdate }]
+let events = [];         // activity events (for feed + streak)
 
-// Restore data EXACTLY as before
-function initState() {
-  const u = localStorage.getItem(STORAGE_KEY_USERS);
-  if (u) users = JSON.parse(u);
+// ---------- CONSTANTS ----------
+const DEFAULT_ADMIN = "loaa";
 
-  const b = localStorage.getItem(STORAGE_KEY_BOOKS);
-  if (b) books = JSON.parse(b);
+// ---------- DOM ELEMENTS ----------
+const outputEl = document.getElementById("terminalOutput");
+const inputEl = document.getElementById("terminalInput");
 
-  const e = localStorage.getItem(STORAGE_KEY_EVENTS);
-  if (e) events = JSON.parse(e);
+const userLabelEl = document.getElementById("userLabel");
+const bookStripEl = document.getElementById("bookStrip");
+const clockEl = document.getElementById("clock");
+const dateEl = document.getElementById("date");
 
-  if (!users["loaa"]) {
-    users["loaa"] = { role: "admin", pass: "books!2026", active: true };
-    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+const statBooksEl = document.getElementById("stat-books");
+const statProgressEl = document.getElementById("stat-progress");
+const statFinishedEl = document.getElementById("stat-finished");
+const statPagesEl = document.getElementById("stat-pages");
+const recentUpdateEl = document.getElementById("recentUpdate");
+const sessionInfoEl = document.getElementById("sessionInfo");
+const weatherDataEl = document.getElementById("weatherData");
+const feedOutputEl = document.getElementById("feedOutput");
+const streakTextEl = document.getElementById("streakText");
+
+// ---------- UTILITIES ----------
+function addLine(text, cls) {
+  const line = document.createElement("div");
+  line.className = "line" + (cls ? " " + cls : "");
+  line.innerHTML = text;
+  outputEl.appendChild(line);
+  outputEl.scrollTop = outputEl.scrollHeight;
+}
+
+function saveBooks() {
+  localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
+}
+
+function saveUsers() {
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+}
+
+function saveEvents() {
+  localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+}
+
+function loadUsers() {
+  const saved = localStorage.getItem(STORAGE_KEY_USERS);
+  if (saved) {
+    try {
+      users = JSON.parse(saved);
+    } catch {
+      users = {};
+    }
+  } else {
+    users = {};
+  }
+  // ensure default admin exists
+  if (!users[DEFAULT_ADMIN]) {
+    users[DEFAULT_ADMIN] = {
+      role: "admin",
+      pass: "books!2026",
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    saveUsers();
   }
 }
-initState();
 
-// =======================
-// DOM REFERENCES
-// =======================
-const clockEl          = document.getElementById("clock");
-const dateEl           = document.getElementById("date");
-const statBooksEl      = document.getElementById("stat-books");
-const statProgressEl   = document.getElementById("stat-progress");
-const statFinishedEl   = document.getElementById("stat-finished");
-const statPagesEl      = document.getElementById("stat-pages");
-const sessionInfoEl    = document.getElementById("sessionInfo");
-const weatherDataEl    = document.getElementById("weatherData");
-const currentReadersEl = document.getElementById("currentReaders");
-const quoteTextEl      = document.getElementById("quoteText");
-const vocabTextEl      = document.getElementById("vocabText");
-const moodTextEl       = document.getElementById("moodText");
-const terminalOutput   = document.getElementById("terminalOutput");
-const terminalInput    = document.getElementById("terminalInput");
-const promptUserEl     = document.getElementById("promptUser");
-const recentUpdateEl   = document.getElementById("recentUpdate");
-const bookStripEl      = document.getElementById("bookStrip");
-
-// =======================
-// UTILITIES
-// =======================
-function addLine(text, cls) {
-  const div = document.createElement("div");
-  div.className = "line" + (cls ? " " + cls : "");
-  div.innerHTML = text;
-  terminalOutput.appendChild(div);
-  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+function loadBooks() {
+  const saved = localStorage.getItem(STORAGE_KEY_BOOKS);
+  if (saved) {
+    try {
+      books = JSON.parse(saved);
+    } catch {
+      books = [];
+    }
+  } else {
+    books = [];
+  }
+  books.forEach((b) => {
+    if (!b.owner) b.owner = DEFAULT_ADMIN;
+    if (!b.comments) b.comments = [];
+    if (!b.lastUpdate) b.lastUpdate = new Date().toISOString();
+  });
 }
 
-function save(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function load(key, fallback) {
-  const raw = localStorage.getItem(key);
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
+function loadEvents() {
+  const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
+  if (saved) {
+    try {
+      events = JSON.parse(saved);
+    } catch {
+      events = [];
+    }
+  } else {
+    events = [];
   }
 }
 
@@ -83,49 +116,13 @@ function formatPercent(book) {
   return Math.round((book.pagesRead / book.totalPages) * 100);
 }
 
-function updatePromptLabel() {
-  if (!promptUserEl) return;
-  promptUserEl.textContent = `${currentUser}@coffee-console (${currentRole})`;
-}
-
-// =======================
-// INITIAL STATE
-// =======================
-function initState() {
-  users  = load(STORAGE_KEY_USERS, {});
-  books  = load(STORAGE_KEY_BOOKS, []);
-  events = load(STORAGE_KEY_EVENTS, []);
-
-  // ensure default admin exists
-  if (!users[DEFAULT_ADMIN]) {
-    users[DEFAULT_ADMIN] = {
-      role: "admin",
-      pass: "books!2026",
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    save(STORAGE_KEY_USERS, users);
-  }
-
-  // normalize books
-  books.forEach((b) => {
-    if (!b.owner) b.owner = DEFAULT_ADMIN;
-    if (!b.comments) b.comments = [];
-    if (!b.lastUpdate) b.lastUpdate = new Date().toISOString();
-  });
-}
-
-// =======================
-// CLOCK & DATE
-// =======================
+// ---------- CLOCK & DATE ----------
 function updateClock() {
   const now = new Date();
-  const h = String(now.getHours()).padStart(2, "0");
-  const m = String(now.getMinutes()).padStart(2, "0");
-  const s = String(now.getSeconds()).padStart(2, "0");
-  if (clockEl) clockEl.textContent = `${h}:${m}:${s}`;
-
-  if (!dateEl) return;
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  clockEl.textContent = `${hh}:${mm}:${ss}`;
 
   if (language === "ko") {
     dateEl.textContent = now.toLocaleDateString("ko-KR", {
@@ -152,70 +149,66 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
-// =======================
-// LABELS / LANGUAGE
-// =======================
-function updateSessionInfo() {
-  if (!sessionInfoEl) return;
-  const access = currentRole === "guest" ? "read-only" : "read/write";
+// ---------- SESSION / USER LABEL ----------
+function updateUserLabel() {
+  userLabelEl.textContent = `${currentUser}@coffee-console (${currentRole})`;
+}
 
+function updateSessionInfo() {
+  const access = currentRole === "admin" ? "read/write" :
+                 currentRole === "member" ? "read/write" : "read-only";
   if (language === "ko") {
     sessionInfoEl.innerHTML =
-      `user: ${currentUser}<br>` +
-      `role: ${currentRole}<br>` +
-      `access: ${access}<br>` +
-      `cmd: <span class="accent">help</span> 입력`;
+      `사용자: ${currentUser}<br/>역할: ${currentRole}<br/>권한: ${access}<br/>cmd: <span class="accent">help</span>`;
   } else if (language === "ja") {
     sessionInfoEl.innerHTML =
-      `user: ${currentUser}<br>` +
-      `role: ${currentRole}<br>` +
-      `access: ${access}<br>` +
-      `cmd: <span class="accent">help</span> と入力`;
+      `ユーザー: ${currentUser}<br/>ロール: ${currentRole}<br/>権限: ${access}<br/>cmd: <span class="accent">help</span>`;
   } else {
     sessionInfoEl.innerHTML =
-      `user: ${currentUser}<br>` +
-      `role: ${currentRole}<br>` +
-      `access: ${access}<br>` +
-      `cmd: type <span class="accent">help</span>`;
+      `user: ${currentUser}<br/>role: ${currentRole}<br/>access: ${access}<br/>cmd: type <span class="accent">help</span>`;
   }
 }
 
+// ---------- LANGUAGE LABELS ----------
 function updateUILabels() {
+  document.querySelectorAll(".langBtn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === language);
+  });
+
   const t = (id, en, ko, ja) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = language === "ko" ? ko : language === "ja" ? ja : en;
+    el.textContent =
+      language === "ko" ? ko : language === "ja" ? ja : en;
   };
 
   t("titleLabel", "COFFEE WITH A BOOK", "책과 커피", "本とコーヒー");
   t("statLabel", "SESSION / STATS", "세션 / 통계", "セッション / 統計");
   t("sessionTitle", "SESSION INFO", "세션 정보", "セッション情報");
-  t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
   t("bookshelfLabel", "BOOKSHELF", "책 목록", "本棚");
+  t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
   t("activityLabel", "ACTIVITY", "활동", "アクティビティ");
+  t("streakLabel", "READING STREAK", "읽기 기록", "読書記録");
+  t("lastUpdateLabel", "RECENT ACTIVITY", "최근 활동", "最近のアクティビティ");
   t("weatherTitle", "WEATHER", "날씨", "天気");
   t("lblBooks", "Books", "책 수", "冊数");
-  t("lblProgress", "In Progress", "진행중", "進行中");
   t("lblFinished", "Finished", "다 읽음", "読了");
+  t("lblProgress", "In Progress", "진행중", "進行中");
   t("lblPages", "Pages Read", "읽은 페이지", "読んだページ数");
-
-  document.querySelectorAll(".langBtn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.lang === language);
-  });
+  t("feedTitleLabel", "GLOBAL READING FEED", "전체 읽기 피드", "グローバル読書フィード");
 
   updateSessionInfo();
   updateClock();
   refreshStats();
-  renderBookStrip();
-  refreshReaders();
-  renderQuoteAndVocab();
-  updateActivityBox();
+  renderFeed();
+  updateActivitySidebar();
+  updateStreak();
   fetchWeather();
 
   localStorage.setItem(STORAGE_KEY_LANG, language);
 }
 
-// language buttons
+// language button clicks
 document.querySelectorAll(".langBtn").forEach((btn) => {
   btn.addEventListener("click", () => {
     language = btn.dataset.lang;
@@ -223,147 +216,252 @@ document.querySelectorAll(".langBtn").forEach((btn) => {
   });
 });
 
-// =======================
-// STATS & BOOK STRIP
-// =======================
+// ---------- STATS ----------
 function refreshStats() {
   const totalBooks = books.length;
   const finished = books.filter(
     (b) => b.totalPages > 0 && b.pagesRead >= b.totalPages
   ).length;
   const inProgress = books.filter(
-    (b) =>
-      b.pagesRead > 0 &&
-      b.totalPages &&
-      b.pagesRead < b.totalPages
+    (b) => b.pagesRead > 0 && b.totalPages && b.pagesRead < b.totalPages
   ).length;
-  const pagesRead = books.reduce(
-    (sum, b) => sum + (b.pagesRead || 0),
-    0
-  );
+  const pagesRead = books.reduce((sum, b) => sum + (b.pagesRead || 0), 0);
 
-  if (statBooksEl)    statBooksEl.textContent = totalBooks;
-  if (statFinishedEl) statFinishedEl.textContent = finished;
-  if (statProgressEl) statProgressEl.textContent = inProgress;
-  if (statPagesEl)    statPagesEl.textContent = pagesRead;
+  statBooksEl.textContent = totalBooks;
+  statFinishedEl.textContent = finished;
+  statProgressEl.textContent = inProgress;
+  statPagesEl.textContent = pagesRead;
 }
 
+// ---------- BOOK STRIP ----------
 function renderBookStrip() {
-  if (!bookStripEl) return;
   bookStripEl.innerHTML = "";
-  books.forEach((b) => {
-    const pct = formatPercent(b);
+  books.forEach((book) => {
+    const pct = formatPercent(book);
     const tile = document.createElement("button");
     tile.className = "book-tile" + (pct >= 100 ? " finished" : "");
+    const progressText = `${book.pagesRead}/${book.totalPages} (${pct}%)`;
     tile.innerHTML = `
-      <span class="title">${b.title}</span>
-      <span class="meta">${b.author} • ${b.owner}</span>
-      <span class="progress">${b.pagesRead}/${b.totalPages} (${pct}%)</span>
+      <span class="title">${book.title}</span>
+      <span class="meta">${book.author} • ${book.owner}</span>
+      <span class="progress">${progressText}</span>
     `;
-    tile.addEventListener("click", () => cmd_view([String(b.id)]));
+    tile.addEventListener("click", () => {
+      cmd_view([String(book.id)]);
+    });
     bookStripEl.appendChild(tile);
   });
 }
 
-// =======================
-// READERS / QUOTE / VOCAB / MOOD
-// =======================
-function refreshReaders() {
-  if (!currentReadersEl) return;
-  const perUser = {};
-  books.forEach((b) => {
-    if (b.pagesRead > 0) {
-      perUser[b.owner] = (perUser[b.owner] || 0) + b.pagesRead;
-    }
-  });
+// ---------- EVENTS / FEED / ACTIVITY ----------
+function logEvent(ev) {
+  ev.timestamp = ev.timestamp || new Date().toISOString();
+  events.push(ev);
+  saveEvents();
+  renderFeed();
+  updateActivitySidebar();
+  updateStreak();
+}
 
-  const names = Object.keys(perUser);
-  if (!names.length) {
-    currentReadersEl.textContent =
+function renderFeed() {
+  feedOutputEl.innerHTML = "";
+  const relevant = events.filter((ev) =>
+    ["progress", "comment", "book_add"].includes(ev.type)
+  );
+  if (!relevant.length) {
+    const line = document.createElement("div");
+    line.className = "line";
+    line.textContent =
       language === "ko"
-        ? "아직 읽는 사람이 없습니다."
+        ? "아직 활동이 없습니다."
         : language === "ja"
-        ? "まだ読んでいる人はいません。"
-        : "No one is reading yet.";
+        ? "まだ活動はありません。"
+        : "No activity yet.";
+    feedOutputEl.appendChild(line);
     return;
   }
 
-  const lines = names.sort().map((name) => `${name} → ${perUser[name]}p`);
-  currentReadersEl.innerHTML = lines.join("<br>");
+  // group by user -> book
+  const grouped = {};
+  relevant.forEach((ev) => {
+    const user = ev.ownerUser || ev.user || "unknown";
+    if (!grouped[user]) grouped[user] = {};
+    const key = ev.bookId ? `${ev.bookId}::${ev.bookTitle}` : ev.bookTitle || "-";
+    if (!grouped[user][key]) grouped[user][key] = [];
+    grouped[user][key].push(ev);
+  });
+
+  const usersSorted = Object.keys(grouped).sort();
+
+  usersSorted.forEach((user) => {
+    const userDiv = document.createElement("div");
+    userDiv.className = "feed-user";
+
+    const userName = document.createElement("div");
+    userName.className = "feed-user-name";
+    userName.textContent = user;
+    userDiv.appendChild(userName);
+
+    const booksMap = grouped[user];
+    const bookKeys = Object.keys(booksMap);
+
+    bookKeys.forEach((bKey) => {
+      const eventsForBook = booksMap[bKey].slice().sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
+      const sample = eventsForBook[0];
+      const bookTitle = sample.bookTitle || "(no title)";
+      const bookDiv = document.createElement("div");
+      bookDiv.className = "feed-book";
+
+      const titleLine = document.createElement("div");
+      titleLine.className = "feed-book-title";
+      titleLine.textContent = `📕 ${bookTitle}`;
+      bookDiv.appendChild(titleLine);
+
+      eventsForBook.slice(0, 3).forEach((ev) => {
+        const eventDiv = document.createElement("div");
+        eventDiv.className = "feed-event";
+
+        const from = ev.fromPages ?? null;
+        const to = ev.toPages ?? null;
+        const delta = typeof ev.deltaPages === "number" ? ev.deltaPages : null;
+
+        const lines = [];
+
+        lines.push(`👤 ${user}`);
+
+        if (from !== null && to !== null) {
+          lines.push(`⬆️ ${from} → ${to}${delta ? ` (+${delta})` : ""}`);
+        }
+
+        if (ev.type === "comment" && ev.commentText) {
+          lines.push(`💬 "${ev.commentText}"`);
+        }
+
+        const time = new Date(ev.timestamp);
+        const timeStr = time.toLocaleString(
+          language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US",
+          { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
+        );
+        lines.push(`🕒 ${timeStr}`);
+
+        eventDiv.innerHTML = lines.join("<br>");
+        bookDiv.appendChild(eventDiv);
+      });
+
+      userDiv.appendChild(bookDiv);
+    });
+
+    feedOutputEl.appendChild(userDiv);
+  });
 }
 
-function renderQuoteAndVocab() {
-  if (quoteTextEl) {
-    quoteTextEl.innerHTML =
-      `"本は心の窓である"<br>` +
-      `책은 마음의 창이다<br>` +
-      `<i>Books are windows of the soul</i>`;
+function updateActivitySidebar() {
+  if (!events.length) {
+    recentUpdateEl.textContent =
+      language === "ko"
+        ? "활동이 없습니다."
+        : language === "ja"
+        ? "活動はありません。"
+        : "No activity yet.";
+    return;
+  }
+  const latest = events.slice().sort(
+    (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+  )[0];
+
+  let text = "";
+  const user = latest.user || latest.ownerUser || "unknown";
+
+  if (latest.type === "book_add") {
+    text = `${user} added "${latest.bookTitle}"`;
+  } else if (latest.type === "progress") {
+    text = `${user} updated "${latest.bookTitle}" ${latest.fromPages}→${latest.toPages}`;
+  } else if (latest.type === "comment") {
+    text = `${user} commented on "${latest.bookTitle}"`;
+  } else if (latest.type === "user_add") {
+    text = `${user} created user "${latest.targetUser}"`;
+  } else if (latest.type === "user_remove") {
+    text = `${user} removed user "${latest.targetUser}"`;
+  } else if (latest.type === "book_remove") {
+    text = `${user} removed book "${latest.bookTitle}"`;
+  } else if (latest.type === "password_self") {
+    text = `${user} updated their password`;
+  } else if (latest.type === "password_admin") {
+    text = `${user} reset password for "${latest.targetUser}"`;
+  } else {
+    text = `${user} did ${latest.type}`;
   }
 
-  if (vocabTextEl) {
-    vocabTextEl.innerHTML =
-      `巡り合う（めぐりあう）<br>` +
-      `우연히 만나다<br>` +
-      `<i>to encounter by chance</i>`;
-  }
+  recentUpdateEl.textContent = text;
 }
 
-function setMoodTextFromCode(code) {
-  let mood;
-  switch (code) {
-    case 0:
-    case 1:
-      mood = {
-        en: "☀️ Sunshine reading — pages feel lighter today",
-        ko: "☀️ 햇살 독서 — 마음도 환해지는 느낌",
-        ja: "☀️ 陽だまり読書 — 心がぽかぽか",
-      };
-      break;
-    case 2:
-      mood = {
-        en: "⛅ Soft sky reading — calm air for quiet stories",
-        ko: "⛅ 잔잔한 하늘 독서 — 조용히 읽기 좋은 날",
-        ja: "⛅ 穏やかな空の読書 — 静かな物語にぴったり",
-      };
-      break;
-    case 3:
-      mood = {
-        en: "☁️ Grey day reading — perfect for introspection",
-        ko: "☁️ 흐린 날 독서 — 생각이 깊어지는 시간",
-        ja: "☁️ 曇りの日の読書 — 物思いにふける時間",
-      };
-      break;
-    case 61:
-    case 80:
-      mood = {
-        en: "🌧 Rainy reading — raindrops as background music",
-        ko: "🌧 빗소리 독서 — 자연이 들려주는 BGM",
-        ja: "🌧 雨音読書 — 雨がBGMになる",
-      };
-      break;
-    case 71:
-      mood = {
-        en: "❄️ Snowy reading — pages feel warmer in your hands",
-        ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
-        ja: "❄️ 雪の読書 — 本が手の中で温かい",
-      };
-      break;
-    default:
-      mood = {
-        en: "📖 Quiet reading time",
-        ko: "📖 조용한 독서 시간",
-        ja: "📖 静かな読書時間",
-      };
+// ---------- STREAK ----------
+function updateStreak() {
+  // streak for currentUser (progress events)
+  const myEvents = events.filter(
+    (ev) => ev.type === "progress" && (ev.ownerUser === currentUser || ev.user === currentUser)
+  );
+  if (!myEvents.length) {
+    streakTextEl.textContent =
+      language === "ko"
+        ? "아직 읽기 기록이 없습니다."
+        : language === "ja"
+        ? "まだ読書記録はありません。"
+        : "No reading streak yet.";
+    return;
   }
-  if (!moodTextEl) return;
-  const txt =
-    language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
-  moodTextEl.textContent = txt;
+
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ key, date: d, pages: 0 });
+  }
+
+  myEvents.forEach((ev) => {
+    const dayKey = ev.timestamp.slice(0, 10);
+    let delta = ev.deltaPages;
+    if (typeof delta !== "number") {
+      const from = ev.fromPages ?? 0;
+      const to = ev.toPages ?? from;
+      delta = to - from;
+    }
+    days.forEach((d) => {
+      if (d.key === dayKey) d.pages += Math.max(delta, 0);
+    });
+  });
+
+  // compute streak (consecutive days from today backward)
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].pages > 0) streak++;
+    else break;
+  }
+
+  const lines = [];
+  if (language === "ko") {
+    lines.push(`연속 일수: ${streak}일`);
+  } else if (language === "ja") {
+    lines.push(`連続日数: ${streak}日`);
+  } else {
+    lines.push(`Streak: ${streak} day(s)`);
+  }
+
+  days.forEach((d) => {
+    const wd = getWeekdayName(d.date.getDay());
+    const has = d.pages > 0;
+    const mark = has ? "✔" : "✖";
+    lines.push(`${wd}: ${mark} ${d.pages} pages`);
+  });
+
+  streakTextEl.innerHTML = lines.join("<br>");
 }
 
-// =======================
-// WEATHER (DAEGU)
-// =======================
+// ---------- WEATHER (DAEGU) ----------
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
 
@@ -379,23 +477,61 @@ function getWeekdayName(dayIndex) {
 
 function weatherCodeToText(code) {
   const base = {
-    0: { en: "Clear",          ko: "맑음",      ja: "快晴" },
-    1: { en: "Mostly clear",   ko: "대체로 맑음", ja: "おおむね晴れ" },
-    2: { en: "Partly cloudy",  ko: "구름 조금", ja: "一部曇り" },
-    3: { en: "Overcast",       ko: "흐림",      ja: "曇り" },
-    45:{ en: "Fog",            ko: "안개",      ja: "霧" },
-    48:{ en: "Foggy",          ko: "짙은 안개", ja: "濃い霧" },
-    61:{ en: "Rain",           ko: "비",        ja: "雨" },
-    71:{ en: "Snow",           ko: "눈",        ja: "雪" },
-    80:{ en: "Rain showers",   ko: "소나기",    ja: "にわか雨" },
-    95:{ en: "Thunderstorm",   ko: "뇌우",      ja: "雷雨" },
+    0: { en: "Clear", ko: "맑음", ja: "快晴" },
+    1: { en: "Mostly clear", ko: "대체로 맑음", ja: "おおむね晴れ" },
+    2: { en: "Partly cloudy", ko: "구름 조금", ja: "一部曇り" },
+    3: { en: "Overcast", ko: "흐림", ja: "曇り" },
+    45: { en: "Fog", ko: "안개", ja: "霧" },
+    48: { en: "Foggy", ko: "짙은 안개", ja: "濃い霧" },
+    51: { en: "Drizzle", ko: "이슬비", ja: "霧雨" },
+    61: { en: "Rain", ko: "비", ja: "雨" },
+    71: { en: "Snow", ko: "눈", ja: "雪" },
+    80: { en: "Rain showers", ko: "소나기", ja: "にわか雨" },
+    95: { en: "Thunderstorm", ko: "뇌우", ja: "雷雨" },
   };
   const info = base[code] || { en: "Unknown", ko: "알 수 없음", ja: "不明" };
   return language === "ko" ? info.ko : language === "ja" ? info.ja : info.en;
 }
 
+function buildStaticInfoPanel(moodText) {
+  let block = "";
+
+  // CURRENT READERS
+  const readers = books
+    .filter(b => b.pagesRead > 0)
+    .map(b => `${b.owner} → ${b.pagesRead}p`);
+
+  if (readers.length) {
+    block += `<span class="accent-amber">📖 CURRENT READERS</span><br>`;
+    block += readers.join("<br>") + "<br><br>";
+  }
+
+  // QUOTE (multilingual)
+  block += `<span class="accent-amber">QUOTE</span><br>`;
+  block += `"本は心の窓である"<br>`;
+  block += `책은 마음의 창이다<br>`;
+  block += `<i>Books are windows of the soul</i><br><br>`;
+
+  // VOCAB
+  block += `<span class="accent-amber">VOCAB</span><br>`;
+  block += `巡り合う（めぐりあう）<br>`;
+  block += `우연히 만나다<br>`;
+  block += `<i>to encounter by chance</i><br><br>`;
+
+  // MOOD (from weather)
+  block += `<span class="accent-amber">MOOD</span><br>`;
+  block += moodText || (
+    language === "ko"
+      ? "📖 조용한 독서 시간"
+      : language === "ja"
+      ? "📖 静かな読書時間"
+      : "📖 Quiet reading time"
+  );
+
+  return block;
+}
+
 async function fetchWeather() {
-  if (!weatherDataEl) return;
   try {
     const url =
       `https://api.open-meteo.com/v1/forecast` +
@@ -418,62 +554,130 @@ async function fetchWeather() {
       return;
     }
 
-    const cw    = data.current_weather;
-    const temp  = Math.round(cw.temperature);
+    const cw = data.current_weather;
+    const temp = Math.ceil(cw.temperature);
     const wCode = cw.weathercode;
 
     // humidity from hourly
     let humidity = null;
     if (data.hourly) {
-      const idx = data.hourly.time.indexOf(cw.time);
-      if (idx >= 0) humidity = data.hourly.relativehumidity_2m[idx];
+      const tIndex = data.hourly.time.indexOf(cw.time);
+      if (tIndex >= 0) {
+        humidity = data.hourly.relativehumidity_2m[tIndex];
+      }
     }
 
     const dTimes = data.daily.time;
-    const dMax   = data.daily.temperature_2m_max;
-    const dMin   = data.daily.temperature_2m_min;
+    const dMax = data.daily.temperature_2m_max;
+    const dMin = data.daily.temperature_2m_min;
     const dCodes = data.daily.weathercode;
 
     const condText = weatherCodeToText(wCode);
 
-    let heading, todayLine, humLine, nextTitle;
+    // mood mapping
+    let mood;
+    switch (wCode) {
+      case 0:
+      case 1:
+        mood = {
+          en: "☀️ Sunshine reading — pages feel lighter today",
+          ko: "☀️ 햇살 독서 — 마음도 환해지는 느낌",
+          ja: "☀️ 陽だまり読書 — 心がぽかぽか",
+        };
+        break;
+      case 2:
+        mood = {
+          en: "⛅ Soft sky reading — a calm atmosphere for stories",
+          ko: "⛅ 잔잔한 하늘 독서 — 이야기 듣기 좋은 날씨",
+          ja: "⛅ 雲間読書 — 静かな読書時間",
+        };
+        break;
+      case 3:
+        mood = {
+          en: "☁️ Grey day reading — perfect for introspection",
+          ko: "☁️ 차분한 흐림 독서 — 생각이 깊어지는 시간",
+          ja: "☁️ 曇り読書 — 静かに読み込む雰囲気",
+        };
+        break;
+      case 45:
+      case 48:
+        mood = {
+          en: "🌫 Misty reading — imagination moves softly",
+          ko: "🌫 안개 독서 — 상상이 천천히 흘러가요",
+          ja: "🌫 霧の読書 — 思考がふわっと広がる",
+        };
+        break;
+      case 61:
+      case 80:
+        mood = {
+          en: "🌧 Rainy reading — the raindrops are our background music",
+          ko: "🌧 빗소리 독서 — 자연의 ASMR",
+          ja: "🌧 雨音読書 — 雨がBGMになる",
+        };
+        break;
+      case 71:
+        mood = {
+          en: "❄️ Snowy reading — pages feel warmer in your hands",
+          ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
+          ja: "❄️ 雪の読書 — 本が手の中で温かい",
+        };
+        break;
+      case 95:
+        mood = {
+          en: "⚡ Stormy reading — dramatic weather suits dramatic stories",
+          ko: "⚡ 폭우 독서 — 감정이 더 짙어지는 시간",
+          ja: "⚡ 雷雨読書 — 雰囲気が物語を深める",
+        };
+        break;
+      default:
+        mood = {
+          en: "📖 Quiet reading time",
+          ko: "📖 조용한 독서 시간",
+          ja: "📖 静かな読書時間",
+        };
+    }
+    const moodText = language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
+
+    const lines = [];
+
+    let headingLine, todayLine, humStr, nextTitle;
+
     if (language === "ko") {
-      heading   = "대구 날씨";
+      headingLine = "대구 날씨";
       todayLine = `오늘: ${temp}°C, ${condText}`;
-      humLine   = humidity != null ? `습도: ${humidity}%` : "";
+      humStr = humidity != null ? `습도: ${humidity}%` : "";
       nextTitle = "3일 예보:";
     } else if (language === "ja") {
-      heading   = "大邱の天気";
+      headingLine = "大邱の天気";
       todayLine = `今日: ${temp}°C, ${condText}`;
-      humLine   = humidity != null ? `湿度: ${humidity}%` : "";
+      humStr = humidity != null ? `湿度: ${humidity}%` : "";
       nextTitle = "3日間の予報:";
     } else {
-      heading   = "DAEGU WEATHER";
+      headingLine = "DAEGU WEATHER";
       todayLine = `Today: ${temp}°C, ${condText}`;
-      humLine   = humidity != null ? `Humidity: ${humidity}%` : "";
+      humStr = humidity != null ? `Humidity: ${humidity}%` : "";
       nextTitle = "Next 3 days:";
     }
 
-    const lines = [];
-    lines.push(heading);
+    lines.push(headingLine);
     lines.push(todayLine);
-    if (humLine) lines.push(humLine);
+    if (humStr) lines.push(humStr);
     lines.push("");
     lines.push(nextTitle);
 
+    // Next 3 days forecast (ceil temps)
     for (let i = 1; i <= 3 && i < dTimes.length; i++) {
       const dDate = new Date(dTimes[i]);
-      const wd    = getWeekdayName(dDate.getDay());
-      const max   = Math.round(dMax[i]);
-      const min   = Math.round(dMin[i]);
-      const cTxt  = weatherCodeToText(dCodes[i]);
-      lines.push(`${wd}: ${max}° / ${min}°  ${cTxt}`);
+      const wd = getWeekdayName(dDate.getDay());
+      const max = Math.ceil(dMax[i]);
+      const min = Math.ceil(dMin[i]);
+      const dCond = weatherCodeToText(dCodes[i]);
+      lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
     }
 
-    weatherDataEl.innerHTML = lines.join("<br>");
-    setMoodTextFromCode(wCode);
+    weatherDataEl.innerHTML =
+      lines.join("<br>") + "<br><br>" + buildStaticInfoPanel(moodText);
   } catch (e) {
-    console.error(e);
     weatherDataEl.textContent =
       language === "ko"
         ? "날씨 정보를 가져오는 중 오류 발생."
@@ -483,59 +687,7 @@ async function fetchWeather() {
   }
 }
 
-// =======================
-// EVENTS & ACTIVITY
-// =======================
-function logEvent(type, payload = {}) {
-  const ev = {
-    type,
-    user: currentUser,
-    timestamp: new Date().toISOString(),
-    ...payload,
-  };
-  events.push(ev);
-  save(STORAGE_KEY_EVENTS, events);
-  updateActivityBox();
-}
-
-function updateActivityBox() {
-  if (!recentUpdateEl) return;
-  if (!events.length) {
-    recentUpdateEl.textContent =
-      language === "ko"
-        ? "최근 활동이 없습니다."
-        : language === "ja"
-        ? "最近の活動はありません。"
-        : "No recent activity.";
-    return;
-  }
-  const last = events[events.length - 1];
-  let text = "";
-  if (last.type === "book_add") {
-    text = `${last.user} added "${last.bookTitle}"`;
-  } else if (last.type === "progress") {
-    text = `${last.user} updated "${last.bookTitle}" to ${last.toPages}p`;
-  } else if (last.type === "comment") {
-    text = `${last.user} commented on "${last.bookTitle}"`;
-  } else if (last.type === "user_add") {
-    text = `${last.user} created user "${last.targetUser}"`;
-  } else if (last.type === "user_remove") {
-    text = `${last.user} removed user "${last.targetUser}"`;
-  } else if (last.type === "book_remove") {
-    text = `${last.user} removed "${last.bookTitle}"`;
-  } else if (last.type === "password_self") {
-    text = `${last.user} changed their password`;
-  } else if (last.type === "password_admin") {
-    text = `${last.user} set password for "${last.targetUser}"`;
-  } else {
-    text = `${last.user} did ${last.type}`;
-  }
-  recentUpdateEl.textContent = text;
-}
-
-// =======================
-// PERMISSIONS
-// =======================
+// ---------- PERMISSIONS ----------
 function requireAdmin() {
   if (currentRole !== "admin") {
     addLine("Admin only.", "error");
@@ -548,9 +700,7 @@ function canEditBook(book) {
   return currentRole === "admin" || book.owner === currentUser;
 }
 
-// =======================
-// COMMANDS
-// =======================
+// ---------- COMMANDS ----------
 function cmd_help() {
   addLine("Commands:", "success");
   addLine("  help                   – show this help");
@@ -566,7 +716,7 @@ function cmd_help() {
   addLine("  removeuser <name>      – remove user");
   addLine("  listusers              – list users");
   addLine("  setpass <username>     – set password for a user");
-  addLine("  add                    – add new book");
+  addLine("  add                    – add new book (for you)");
   addLine("  edit <id>              – edit book meta");
   addLine("  update <id> <page>     – update pages read");
   addLine("  comment <id> <text>    – add comment");
@@ -574,12 +724,12 @@ function cmd_help() {
 }
 
 function cmd_list(args) {
+  let targetUser = args[0];
   let list = books;
-  if (args[0]) {
-    const u = args[0];
-    list = books.filter((b) => b.owner === u);
+  if (targetUser) {
+    list = books.filter((b) => b.owner === targetUser);
     if (!list.length) {
-      addLine("No books for user " + u, "error");
+      addLine("No books for user " + targetUser, "error");
       return;
     }
   }
@@ -633,7 +783,7 @@ function cmd_lang(args) {
 
 function cmd_login() {
   const username = prompt("username:");
-  const pass     = prompt("password:");
+  const pass = prompt("password:");
   if (!username || !pass) {
     addLine("Login cancelled.", "error");
     return;
@@ -645,24 +795,27 @@ function cmd_login() {
   }
   currentUser = username;
   currentRole = u.role;
-  updatePromptLabel();
+  updateUserLabel();
   updateSessionInfo();
-  addLine(`Logged in as ${username} (${currentRole}).`, "success");
+  addLine("Logged in as " + username + " (" + currentRole + ").", "success");
 }
 
 function cmd_logout() {
   currentUser = "guest";
   currentRole = "guest";
-  updatePromptLabel();
+  updateUserLabel();
   updateSessionInfo();
   addLine("Logged out.", "success");
 }
 
 function cmd_createuser(args) {
   if (!requireAdmin()) return;
-  let username = args[0] || prompt("username:");
+  let username = args[0];
   if (!username) {
-    addLine("No username.", "error");
+    username = prompt("username:");
+  }
+  if (!username) {
+    addLine("No username provided.", "error");
     return;
   }
   if (users[username]) {
@@ -671,7 +824,7 @@ function cmd_createuser(args) {
   }
   const pass = prompt("password:");
   if (!pass) {
-    addLine("No password.", "error");
+    addLine("No password provided.", "error");
     return;
   }
   users[username] = {
@@ -680,9 +833,9 @@ function cmd_createuser(args) {
     active: true,
     createdAt: new Date().toISOString(),
   };
-  save(STORAGE_KEY_USERS, users);
+  saveUsers();
   addLine("User created: " + username, "success");
-  logEvent("user_add", { targetUser: username });
+  logEvent({ type: "user_add", user: currentUser, targetUser: username });
 }
 
 function cmd_removeuser(args) {
@@ -701,19 +854,19 @@ function cmd_removeuser(args) {
     return;
   }
   delete users[username];
-  save(STORAGE_KEY_USERS, users);
+  saveUsers();
   addLine("User removed: " + username, "success");
-  logEvent("user_remove", { targetUser: username });
+  logEvent({ type: "user_remove", user: currentUser, targetUser: username });
 }
 
 function cmd_listusers() {
   if (!requireAdmin()) return;
   const admins = Object.entries(users)
     .filter(([_, u]) => u.role === "admin")
-    .map(([n]) => n);
+    .map(([name]) => name);
   const members = Object.entries(users)
     .filter(([_, u]) => u.role === "member")
-    .map(([n]) => n);
+    .map(([name]) => name);
 
   addLine("Admins:", "success");
   admins.forEach((n) => addLine("  - " + n));
@@ -723,12 +876,12 @@ function cmd_listusers() {
 
 function cmd_add() {
   if (currentRole === "guest") {
-    addLine("Login required.", "error");
+    addLine("Login required to add books.", "error");
     return;
   }
-  const title  = prompt("Title:");
+  const title = prompt("Title:");
   const author = prompt("Author:");
-  const total  = Number(prompt("Total pages:"));
+  const total = Number(prompt("Total pages:"));
   if (!title || !total) {
     addLine("Aborted.", "error");
     return;
@@ -745,12 +898,17 @@ function cmd_add() {
     lastUpdate: new Date().toISOString(),
   };
   books.push(book);
-  save(STORAGE_KEY_BOOKS, books);
+  saveBooks();
   refreshStats();
   renderBookStrip();
-  refreshReaders();
   addLine(`Book added with id ${id}.`, "success");
-  logEvent("book_add", { bookId: id, bookTitle: title });
+  logEvent({
+    type: "book_add",
+    user: currentUser,
+    ownerUser: currentUser,
+    bookId: id,
+    bookTitle: title,
+  });
 }
 
 function cmd_edit(args) {
@@ -768,18 +926,17 @@ function cmd_edit(args) {
     addLine("Not your book.", "error");
     return;
   }
-  const newTitle  = prompt("New title:", book.title);
+  const newTitle = prompt("New title:", book.title);
   const newAuthor = prompt("New author:", book.author);
-  const newTotal  = Number(prompt("New total pages:", book.totalPages));
+  const newTotal = Number(prompt("New total pages:", book.totalPages));
 
-  if (newTitle)  book.title  = newTitle;
+  if (newTitle) book.title = newTitle;
   if (newAuthor) book.author = newAuthor;
-  if (newTotal)  book.totalPages = newTotal;
+  if (newTotal) book.totalPages = newTotal;
   book.lastUpdate = new Date().toISOString();
-  save(STORAGE_KEY_BOOKS, books);
+  saveBooks();
   refreshStats();
   renderBookStrip();
-  refreshReaders();
   addLine("Book updated.", "success");
 }
 
@@ -788,9 +945,9 @@ function cmd_update(args) {
     addLine("Login required.", "error");
     return;
   }
-  const id    = Number(args[0]);
+  const id = Number(args[0]);
   const pages = Number(args[1]);
-  const book  = books.find((b) => b.id === id);
+  const book = books.find((b) => b.id === id);
   if (!book || isNaN(pages)) {
     addLine("Usage: update <id> <page>", "error");
     return;
@@ -801,16 +958,18 @@ function cmd_update(args) {
   }
   const from = book.pagesRead || 0;
   book.pagesRead = Math.min(pages, book.totalPages || pages);
-  const to    = book.pagesRead;
-  const delta = to - from;
   book.lastUpdate = new Date().toISOString();
-  save(STORAGE_KEY_BOOKS, books);
+  saveBooks();
   refreshStats();
   renderBookStrip();
-  refreshReaders();
   addLine("Progress updated.", "success");
 
-  logEvent("progress", {
+  const to = book.pagesRead;
+  const delta = to - from;
+  logEvent({
+    type: "progress",
+    user: currentUser,
+    ownerUser: book.owner,
     bookId: book.id,
     bookTitle: book.title,
     fromPages: from,
@@ -847,15 +1006,19 @@ function cmd_comment(args) {
   };
   book.comments.push(comment);
   book.lastUpdate = comment.timestamp;
-  save(STORAGE_KEY_BOOKS, books);
+  saveBooks();
   refreshStats();
-  renderBookStrip();
-  refreshReaders();
   addLine("Comment added.", "success");
 
-  logEvent("comment", {
+  logEvent({
+    type: "comment",
+    user: currentUser,
+    ownerUser: book.owner,
     bookId: book.id,
     bookTitle: book.title,
+    fromPages: book.pagesRead,
+    toPages: book.pagesRead,
+    deltaPages: 0,
     commentText: text,
   });
 }
@@ -877,12 +1040,17 @@ function cmd_remove(args) {
     return;
   }
   books.splice(idx, 1);
-  save(STORAGE_KEY_BOOKS, books);
+  saveBooks();
   refreshStats();
   renderBookStrip();
-  refreshReaders();
   addLine("Book removed.", "success");
-  logEvent("book_remove", { bookId: book.id, bookTitle: book.title });
+  logEvent({
+    type: "book_remove",
+    user: currentUser,
+    ownerUser: book.owner,
+    bookId: book.id,
+    bookTitle: book.title,
+  });
 }
 
 function cmd_weather() {
@@ -897,6 +1065,7 @@ function cmd_weather() {
   fetchWeather();
 }
 
+// password: self-change
 function cmd_changepass() {
   if (currentUser === "guest") {
     addLine("Login required.", "error");
@@ -910,15 +1079,19 @@ function cmd_changepass() {
   }
   const newp = prompt("New password:");
   if (!newp) {
-    addLine("No new password.", "error");
+    addLine("No new password entered.", "error");
     return;
   }
   users[currentUser].pass = newp;
-  save(STORAGE_KEY_USERS, users);
+  saveUsers();
   addLine("Password updated.", "success");
-  logEvent("password_self", {});
+  logEvent({
+    type: "password_self",
+    user: currentUser
+  });
 }
 
+// password: admin reset
 function cmd_setpass(args) {
   if (!requireAdmin()) return;
   const target = args[0];
@@ -932,74 +1105,67 @@ function cmd_setpass(args) {
   }
   const newp = prompt(`New password for ${target}:`);
   if (!newp) {
-    addLine("No new password.", "error");
+    addLine("No new password entered.", "error");
     return;
   }
   users[target].pass = newp;
-  save(STORAGE_KEY_USERS, users);
-  addLine(`Password reset for ${target}.`, "success");
-  logEvent("password_admin", { targetUser: target });
+  saveUsers();
+  addLine(`Password reset for ${target}`, "success");
+  logEvent({
+    type: "password_admin",
+    user: currentUser,
+    targetUser: target
+  });
 }
 
-// =======================
-// COMMAND DISPATCH
-// =======================
+// ---------- COMMAND DISPATCH ----------
 function handleCommand(input) {
   const raw = input.trim();
   if (!raw) return;
-  addLine("&gt; " + raw);
+  addLine("> " + raw);
 
   const parts = raw.split(" ");
-  const cmd   = parts[0].toLowerCase();
-  const args  = parts.slice(1);
+  const cmd = parts[0].toLowerCase();
+  const args = parts.slice(1);
 
   switch (cmd) {
-    case "help":       cmd_help(); break;
-    case "list":       cmd_list(args); break;
-    case "view":       cmd_view(args); break;
-    case "lang":       cmd_lang(args); break;
-    case "login":      cmd_login(); break;
-    case "logout":     cmd_logout(); break;
+    case "help": cmd_help(); break;
+    case "list": cmd_list(args); break;
+    case "view": cmd_view(args); break;
+    case "lang": cmd_lang(args); break;
+    case "login": cmd_login(); break;
+    case "logout": cmd_logout(); break;
     case "createuser": cmd_createuser(args); break;
     case "removeuser": cmd_removeuser(args); break;
-    case "listusers":  cmd_listusers(); break;
-    case "add":        cmd_add(); break;
-    case "edit":       cmd_edit(args); break;
-    case "update":     cmd_update(args); break;
-    case "comment":    cmd_comment(args); break;
-    case "remove":     cmd_remove(args); break;
-    case "weather":    cmd_weather(); break;
+    case "listusers": cmd_listusers(); break;
+    case "add": cmd_add(); break;
+    case "edit": cmd_edit(args); break;
+    case "update": cmd_update(args); break;
+    case "comment": cmd_comment(args); break;
+    case "remove": cmd_remove(args); break;
+    case "weather": cmd_weather(); break;
     case "changepass": cmd_changepass(); break;
-    case "setpass":    cmd_setpass(args); break;
+    case "setpass": cmd_setpass(args); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
 }
 
-// input handler
-if (terminalInput) {
-  terminalInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const v = terminalInput.value;
-      terminalInput.value = "";
-      handleCommand(v);
-    }
-  });
-}
+// ---------- INPUT HANDLER ----------
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const v = inputEl.value;
+    inputEl.value = "";
+    handleCommand(v);
+  }
+});
 
-// =======================
-// INIT
-// =======================
-initState();
-updatePromptLabel();
-updateUILabels();
+// ---------- INIT ----------
+loadUsers();
+loadBooks();
+loadEvents();
+updateUserLabel();
 updateClock();
-fetchWeather();
-
-addLine(
-  "Welcome to <span class='accent'>Coffee with a Book</span> ☕📖",
-  "success"
-);
-addLine("Type <span class='accent'>help</span> for available commands.");
-
-
+refreshStats();
+renderBookStrip();
+updateUILabels(); // also fetches weather, feed, activity, streak
