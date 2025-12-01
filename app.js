@@ -446,13 +446,27 @@ function updateStreak() {
   }
 
   days.forEach((d) => {
-    const wd = getWeekdayName(d.date.getDay());
+    const dateStr = formatDateShort(d.date);
     const has = d.pages > 0;
     const mark = has ? "✔" : "✖";
-    lines.push(`${wd}: ${mark} ${d.pages} pages`);
+    lines.push(`${dateStr}: ${mark} ${d.pages}p`);
   });
 
   streakTextEl.innerHTML = lines.join("<br>");
+}
+
+function formatDateShort(date) {
+  const month = date.getMonth();
+  const day = date.getDate();
+  
+  if (language === "ko") {
+    return `${month + 1}월 ${day}일`;
+  } else if (language === "ja") {
+    return `${month + 1}月${day}日`;
+  } else {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${monthNames[month]} ${day}`;
+  }
 }
 
 // ---------- WEATHER (DAEGU) ----------
@@ -1180,3 +1194,4 @@ updateClock();
 refreshStats();
 renderBookStrip();
 updateUILabels();
+
