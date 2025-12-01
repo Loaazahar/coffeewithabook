@@ -47,7 +47,6 @@ const currentReadersEl = document.getElementById("currentReaders");
 const quoteTextEl      = document.getElementById("quoteText");
 const vocabTextEl      = document.getElementById("vocabText");
 const moodTextEl       = document.getElementById("moodText");
-const fireplaceEl      = document.getElementById("fireplace");
 const terminalOutput   = document.getElementById("terminalOutput");
 const terminalInput    = document.getElementById("terminalInput");
 const promptUserEl     = document.getElementById("promptUser");
@@ -361,19 +360,6 @@ function setMoodTextFromCode(code) {
     language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
   moodTextEl.textContent = txt;
 }
-
-// Fireplace animation (always shown)
-const fireplaceFrames = [
-  "    (  🔥  )\n   ( 🔥🔥 )\n    (  🔥  )",
-  "    ( 🔥 )\n   (🔥🔥🔥)\n    ( 🔥 )",
-  "     🔥  \n   (🔥🔥🔥)\n    🔥🔥 "
-];
-let fireplaceIndex = 0;
-setInterval(() => {
-  if (!fireplaceEl) return;
-  fireplaceEl.textContent = fireplaceFrames[fireplaceIndex];
-  fireplaceIndex = (fireplaceIndex + 1) % fireplaceFrames.length;
-}, 900);
 
 // =======================
 // WEATHER (DAEGU)
@@ -1015,4 +1001,5 @@ addLine(
   "success"
 );
 addLine("Type <span class='accent'>help</span> for available commands.");
+
 
