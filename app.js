@@ -6,15 +6,31 @@ const STORAGE_KEY_USERS  = "coffee_users";
 const STORAGE_KEY_BOOKS  = "coffee_books";
 const STORAGE_KEY_EVENTS = "coffee_events";
 
-const DEFAULT_ADMIN = "loaa";
-
 let language    = localStorage.getItem(STORAGE_KEY_LANG) || "en";
 let currentUser = "guest";
-let currentRole = "guest";  // "guest" | "admin" | "member"
+let currentRole = "guest";
 
 let users  = {};
 let books  = [];
 let events = [];
+
+// Restore data EXACTLY as before
+function initState() {
+  const u = localStorage.getItem(STORAGE_KEY_USERS);
+  if (u) users = JSON.parse(u);
+
+  const b = localStorage.getItem(STORAGE_KEY_BOOKS);
+  if (b) books = JSON.parse(b);
+
+  const e = localStorage.getItem(STORAGE_KEY_EVENTS);
+  if (e) events = JSON.parse(e);
+
+  if (!users["loaa"]) {
+    users["loaa"] = { role: "admin", pass: "books!2026", active: true };
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+  }
+}
+initState();
 
 // =======================
 // DOM REFERENCES
@@ -999,3 +1015,4 @@ addLine(
   "success"
 );
 addLine("Type <span class='accent'>help</span> for available commands.");
+
