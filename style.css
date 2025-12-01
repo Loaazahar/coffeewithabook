@@ -32,11 +32,11 @@ body {
   overflow: hidden;
 }
 
-/* DESKTOP GRID: 3 columns, no footer */
+/* DESKTOP GRID: 3 columns, full height */
 .dashboard {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 240px;
-  grid-template-rows: 1fr;
+  grid-template-rows: 100%;
   grid-template-areas: "left center right";
   height: 100vh;
   width: 100vw;
@@ -55,10 +55,12 @@ body {
 
 .panel-left {
   grid-area: left;
+  height: 100%;
 }
 
 .panel-right {
   grid-area: right;
+  height: 100%;
 }
 
 .panel-header {
@@ -179,17 +181,18 @@ body {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-soft);
-  margin: 6px 0;
   background: var(--bg-terminal);
   overflow: hidden;
+  height: 100%;
 }
 
-/* TOP ROW: FEED + ACTIVITY SIDE BY SIDE */
+/* TOP ROW: 3 COLUMNS - FEED | STREAK | RECENT */
 .top-row {
-  flex: 1.1;
+  flex: 1;
   display: flex;
   border-bottom: 1px solid var(--border-soft);
   overflow: hidden;
+  min-height: 0;
 }
 
 .feed-block {
@@ -235,24 +238,37 @@ body {
   color: var(--text-main);
 }
 
-/* ACTIVITY BLOCK: STREAK + RECENT STACKED */
+/* ACTIVITY BLOCK: 2 COLUMNS SIDE BY SIDE */
 .activity-block {
-  width: 220px;
-  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  flex-shrink: 0;
   overflow: hidden;
 }
 
 .activity-section {
-  flex: 1;
-  padding: 8px 10px;
-  overflow-y: auto;
-  border-bottom: 1px solid var(--border-soft);
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-right: 1px solid var(--border-soft);
+  overflow: hidden;
 }
 
 .activity-section:last-child {
-  border-bottom: none;
+  border-right: none;
+}
+
+.activity-section .stats-title {
+  padding: 6px 10px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+
+.activity-section .recent-text {
+  flex: 1;
+  padding: 8px 10px;
+  overflow-y: auto;
 }
 
 .recent-text {
@@ -262,7 +278,8 @@ body {
 
 /* SHELL */
 .shell-block {
-  flex: 0.9;
+  flex: 0 0 auto;
+  height: 220px;
   display: flex;
   flex-direction: column;
 }
@@ -276,6 +293,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .terminal-output {
@@ -306,6 +324,7 @@ body {
   padding: 6px 10px;
   font-size: 12px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .prompt-label {
@@ -414,6 +433,7 @@ body {
   .panel-left {
     order: 1;
     width: 100%;
+    height: auto;
     max-height: none;
     overflow: visible;
   }
@@ -421,11 +441,10 @@ body {
   .terminal-area {
     order: 2;
     width: 100%;
-    margin: 0;
-    min-height: 400px;
+    height: auto;
+    min-height: 500px;
   }
 
-  /* Stack feed and activity vertically on mobile */
   .top-row {
     flex-direction: column;
     flex: none;
@@ -446,7 +465,7 @@ body {
 
   .activity-section {
     flex: 1;
-    border-bottom: none;
+    width: auto;
     border-right: 1px solid var(--border-soft);
   }
 
@@ -455,12 +474,14 @@ body {
   }
 
   .shell-block {
+    height: auto;
     min-height: 200px;
   }
 
   .panel-right {
     order: 3;
     width: 100%;
+    height: auto;
     max-height: 180px;
   }
 
