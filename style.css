@@ -8,21 +8,36 @@
   --text-main: #cde6ff;
   --text-muted: #6b809a;
   --danger: #ff5c7a;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
 }
 
 body {
-  margin: 0;
   background: radial-gradient(circle at top, #0a1220 0, #040816 60%, #000 100%);
-  font-family: var(--font-mono);
   color: var(--text-main);
+  font-family: var(--font-mono);
   overflow: hidden;
 }
 
+/* DASHBOARD LAYOUT */
+
 .dashboard {
   display: grid;
-  grid-template-columns: 300px minmax(0,1fr) 260px;
-  grid-template-rows: minmax(0,1fr) 140px;
+  grid-template-columns: 300px minmax(0, 1fr) 260px;
+  grid-template-rows: minmax(0, 1fr) 140px;
   grid-template-areas:
     "left center right"
     "footer footer footer";
@@ -30,27 +45,48 @@ body {
   width: 100vw;
 }
 
+/* PANELS */
 
-
-/* LEFT PANEL */
-.panel-left {
-  grid-area: left;
+.panel {
+  background: rgba(6, 13, 24, 0.96);
+  border: 1px solid var(--border-soft);
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.big-title {
-  font-size: 16px;
+.panel-left {
+  grid-area: left;
+}
+
+.terminal-area {
+  grid-area: center;
+  background: var(--bg-terminal);
+  padding: 0;
+}
+
+.panel-right {
+  grid-area: right;
+}
+
+/* TOP BAR (TITLE + LANG) */
+
+.top-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#titleLabel {
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  margin-bottom: 4px;
+  letter-spacing: 0.14em;
 }
 
 #langButtons {
   display: flex;
-  gap: 5px;
-  margin-bottom: 8px;
+  gap: 4px;
 }
 
 .langBtn {
@@ -58,7 +94,9 @@ body {
   color: var(--text-muted);
   border: 1px solid var(--border-soft);
   padding: 2px 6px;
+  font-size: 10px;
   cursor: pointer;
+  font-family: var(--font-mono);
 }
 
 .langBtn.active {
@@ -66,95 +104,124 @@ body {
   border-color: var(--accent);
 }
 
+/* LEFT COLUMN BLOCKS */
 
-
-/* BLOCK STYLE */
 .time-block,
 .stats-block,
 .session-block,
 .weather-block,
-.reader-block,
+.readers-block,
 .quote-block,
 .vocab-block,
 .mood-block {
-  background: rgba(6,13,24,0.97);
   border: 1px solid var(--border-soft);
   padding: 8px;
 }
 
+.time {
+  font-size: 24px;
+  letter-spacing: 0.12em;
+}
+
+.date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 .stats-title {
   font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.stats-grid {
+  font-size: 11px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1px 0;
+}
+
+.session-lines {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.weather-text {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--accent-amber);
+}
+
+.recent-text {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* TERMINAL */
+
+.terminal-header {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 6px;
-}
-
-
-
-/* TERMINAL */
-.panel-center {
-  grid-area: center;
-}
-
-.terminal-area {
-  grid-area: center;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-terminal);
-  border: 1px solid var(--border-soft);
-  overflow: hidden;
-}
-
-.live-feed {
-  height: 30%;
-  overflow-y: auto;
-  border-bottom: 1px solid var(--border-soft);
-  padding: 6px;
-  font-size: 11px;
-  color: var(--accent-amber);
 }
 
 .terminal-output {
   flex: 1;
+  padding: 10px;
   font-size: 12px;
   line-height: 1.4;
-  padding: 10px;
   overflow-y: auto;
+  white-space: pre-wrap;
 }
 
+.terminal-output .line {
+  margin-bottom: 2px;
+}
 
+.terminal-output .line.error {
+  color: var(--danger);
+}
+
+.terminal-output .line.success {
+  color: var(--accent);
+}
 
 .terminal-input-bar {
   display: flex;
   align-items: center;
   border-top: 1px solid var(--border-soft);
   padding: 6px 10px;
+  font-size: 12px;
 }
 
 .prompt-label {
-  margin-right: 6px;
+  margin-right: 8px;
   color: var(--accent-amber);
+  font-size: 11px;
 }
 
 #terminalInput {
   flex: 1;
   background: transparent;
   border: none;
-  color: var(--text-main);
   outline: none;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  caret-color: var(--accent); /* single green cursor */
 }
-
-
-
-/* CURSOR — removed the double cursor issue */
-#terminalInput::selection {
-  background: transparent;
-}
-
-
 
 /* FIREPLACE */
+
 .fireplace {
   font-size: 10px;
   color: #ffb677;
@@ -163,22 +230,99 @@ body {
   margin-top: 4px;
 }
 
+/* FOOTER / BOOK BAR */
 
-
-/* GAP FIX */
 .footer-bar {
-  border-top: 1px solid var(--border-soft);
-  padding-top: 5px;
-  margin-top: 0;
+  grid-area: footer;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 10px 8px;
 }
 
+.footer-header {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
 
+.book-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 3px 0;
+}
+
+.book-tile {
+  min-width: 120px;
+  border: 1px solid var(--border-soft);
+  padding: 4px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  background: #07101d;
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.book-tile span.title {
+  font-weight: 600;
+}
+
+.book-tile span.meta {
+  color: var(--text-muted);
+}
+
+.book-tile span.progress {
+  color: var(--accent-amber);
+}
+
+.book-tile:hover {
+  background: #0e1b2b;
+  border-color: var(--accent);
+}
+
+.book-tile.finished {
+  border-color: var(--accent);
+}
+
+.book-tile.finished span.title::before {
+  content: "✔ ";
+  color: var(--accent);
+}
+
+/* SCROLLBARS */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #02050a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #182332;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #24354b;
+}
 
 /* RESPONSIVE */
+
 @media (max-width: 900px) {
   .dashboard {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto 140px;
     grid-template-areas:
       "left"
       "center"
