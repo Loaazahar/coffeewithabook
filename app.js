@@ -36,6 +36,11 @@ const weatherDataEl = document.getElementById("weatherData");
 const feedOutputEl = document.getElementById("feedOutput");
 const streakTextEl = document.getElementById("streakText");
 
+const currentReadersEl = document.getElementById("currentReadersContainer");
+const quoteEl = document.getElementById("quoteContainer");
+const vocabEl = document.getElementById("vocabContainer");
+const moodEl = document.getElementById("moodContainer");
+
 // ---------- UTILITIES ----------
 function addLine(text, cls) {
   const line = document.createElement("div");
@@ -399,19 +404,9 @@ function updateActivitySidebar() {
 
 // ---------- STREAK ----------
 function updateStreak() {
-  // streak for currentUser (progress events)
   const myEvents = events.filter(
     (ev) => ev.type === "progress" && (ev.ownerUser === currentUser || ev.user === currentUser)
   );
-  if (!myEvents.length) {
-    streakTextEl.textContent =
-      language === "ko"
-        ? "아직 읽기 기록이 없습니다."
-        : language === "ja"
-        ? "まだ読書記録はありません。"
-        : "No reading streak yet.";
-    return;
-  }
 
   const today = new Date();
   const days = [];
@@ -435,7 +430,6 @@ function updateStreak() {
     });
   });
 
-  // compute streak (consecutive days from today backward)
   let streak = 0;
   for (let i = days.length - 1; i >= 0; i--) {
     if (days[i].pages > 0) streak++;
@@ -493,42 +487,52 @@ function weatherCodeToText(code) {
   return language === "ko" ? info.ko : language === "ja" ? info.ja : info.en;
 }
 
-function buildStaticInfoPanel(moodText) {
-  let block = "";
-
-  // CURRENT READERS
+function renderCurrentReaders() {
   const readers = books
     .filter(b => b.pagesRead > 0)
     .map(b => `${b.owner} → ${b.pagesRead}p`);
 
   if (readers.length) {
-    block += `<span class="accent-amber">📖 CURRENT READERS</span><br>`;
-    block += readers.join("<br>") + "<br><br>";
+    const lines = [`<span class="accent-amber">📖 CURRENT READERS</span>`];
+    lines.push(...readers);
+    currentReadersEl.innerHTML = lines.join("<br>");
+  } else {
+    currentReadersEl.innerHTML = "";
   }
+}
 
-  // QUOTE (multilingual)
-  block += `<span class="accent-amber">QUOTE</span><br>`;
-  block += `"本は心の窓である"<br>`;
-  block += `책은 마음의 창이다<br>`;
-  block += `<i>Books are windows of the soul</i><br><br>`;
+function renderQuote() {
+  const lines = [
+    `<span class="accent-amber">QUOTE</span>`,
+    `"本は心の窓である"`,
+    `책은 마음의 창이다`,
+    `<i>Books are windows of the soul</i>`
+  ];
+  quoteEl.innerHTML = lines.join("<br>");
+}
 
-  // VOCAB
-  block += `<span class="accent-amber">VOCAB</span><br>`;
-  block += `巡り合う（めぐりあう）<br>`;
-  block += `우연히 만나다<br>`;
-  block += `<i>to encounter by chance</i><br><br>`;
+function renderVocab() {
+  const lines = [
+    `<span class="accent-amber">VOCAB</span>`,
+    `巡り合う（めぐりあう）`,
+    `우연히 만나다`,
+    `<i>to encounter by chance</i>`
+  ];
+  vocabEl.innerHTML = lines.join("<br>");
+}
 
-  // MOOD (from weather)
-  block += `<span class="accent-amber">MOOD</span><br>`;
-  block += moodText || (
-    language === "ko"
-      ? "📖 조용한 독서 시간"
-      : language === "ja"
-      ? "📖 静かな読書時間"
-      : "📖 Quiet reading time"
-  );
-
-  return block;
+function renderMood(moodText) {
+  const lines = [
+    `<span class="accent-amber">MOOD</span>`,
+    moodText || (
+      language === "ko"
+        ? "📖 조용한 독서 시간"
+        : language === "ja"
+        ? "📖 静かな読書時間"
+        : "📖 Quiet reading time"
+    )
+  ];
+  moodEl.innerHTML = lines.join("<br>");
 }
 
 async function fetchWeather() {
@@ -675,8 +679,12 @@ async function fetchWeather() {
       lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
     }
 
-    weatherDataEl.innerHTML =
-      lines.join("<br>") + "<br><br>" + buildStaticInfoPanel(moodText);
+    weatherDataEl.innerHTML = lines.join("<br>");
+
+    renderCurrentReaders();
+    renderQuote();
+    renderVocab();
+    renderMood(moodText);
   } catch (e) {
     weatherDataEl.textContent =
       language === "ko"
@@ -797,6 +805,7 @@ function cmd_login() {
   currentRole = u.role;
   updateUserLabel();
   updateSessionInfo();
+  updateStreak();
   addLine("Logged in as " + username + " (" + currentRole + ").", "success");
 }
 
@@ -805,6 +814,7 @@ function cmd_logout() {
   currentRole = "guest";
   updateUserLabel();
   updateSessionInfo();
+  updateStreak();
   addLine("Logged out.", "success");
 }
 
@@ -901,6 +911,7 @@ function cmd_add() {
   saveBooks();
   refreshStats();
   renderBookStrip();
+  renderCurrentReaders();
   addLine(`Book added with id ${id}.`, "success");
   logEvent({
     type: "book_add",
@@ -962,6 +973,7 @@ function cmd_update(args) {
   saveBooks();
   refreshStats();
   renderBookStrip();
+  renderCurrentReaders();
   addLine("Progress updated.", "success");
 
   const to = book.pagesRead;
@@ -1043,6 +1055,7 @@ function cmd_remove(args) {
   saveBooks();
   refreshStats();
   renderBookStrip();
+  renderCurrentReaders();
   addLine("Book removed.", "success");
   logEvent({
     type: "book_remove",
@@ -1065,7 +1078,6 @@ function cmd_weather() {
   fetchWeather();
 }
 
-// password: self-change
 function cmd_changepass() {
   if (currentUser === "guest") {
     addLine("Login required.", "error");
@@ -1091,7 +1103,6 @@ function cmd_changepass() {
   });
 }
 
-// password: admin reset
 function cmd_setpass(args) {
   if (!requireAdmin()) return;
   const target = args[0];
@@ -1168,4 +1179,4 @@ updateUserLabel();
 updateClock();
 refreshStats();
 renderBookStrip();
-updateUILabels(); // also fetches weather, feed, activity, streak
+updateUILabels();
