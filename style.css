@@ -32,11 +32,11 @@ body {
   overflow: hidden;
 }
 
-/* DESKTOP GRID: 3 columns, full height */
+/* DESKTOP GRID */
 .dashboard {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 240px;
-  grid-template-rows: 100%;
+  grid-template-rows: 100vh;
   grid-template-areas: "left center right";
   height: 100vh;
   width: 100vw;
@@ -55,12 +55,10 @@ body {
 
 .panel-left {
   grid-area: left;
-  height: 100%;
 }
 
 .panel-right {
   grid-area: right;
-  height: 100%;
 }
 
 .panel-header {
@@ -175,7 +173,7 @@ body {
   color: var(--text-main);
 }
 
-/* CENTER AREA */
+/* CENTER AREA: 50% top / 50% bottom */
 .terminal-area {
   grid-area: center;
   display: flex;
@@ -183,10 +181,9 @@ body {
   border: 1px solid var(--border-soft);
   background: var(--bg-terminal);
   overflow: hidden;
-  height: 100%;
 }
 
-/* TOP ROW: 3 COLUMNS - FEED | STREAK | RECENT */
+/* TOP ROW: 3 EQUAL COLUMNS */
 .top-row {
   flex: 1;
   display: flex;
@@ -238,20 +235,21 @@ body {
   color: var(--text-main);
 }
 
-/* ACTIVITY BLOCK: 2 COLUMNS SIDE BY SIDE */
+/* ACTIVITY BLOCK: 2 EQUAL COLUMNS */
 .activity-block {
+  flex: 1;
   display: flex;
-  flex-shrink: 0;
   overflow: hidden;
+  min-width: 0;
 }
 
 .activity-section {
-  width: 180px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0;
   border-right: 1px solid var(--border-soft);
   overflow: hidden;
+  min-width: 0;
 }
 
 .activity-section:last-child {
@@ -276,12 +274,12 @@ body {
   line-height: 1.5;
 }
 
-/* SHELL */
+/* SHELL: BOTTOM 50% */
 .shell-block {
-  flex: 0 0 auto;
-  height: 220px;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .terminal-header {
@@ -303,6 +301,7 @@ body {
   line-height: 1.4;
   overflow-y: auto;
   white-space: pre-wrap;
+  min-height: 0;
 }
 
 .terminal-output .line {
@@ -363,6 +362,7 @@ body {
   flex-direction: column;
   gap: 2px;
   transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
 }
 
 .book-tile span.title {
@@ -419,7 +419,8 @@ body {
 /* ===================== MOBILE ===================== */
 @media (max-width: 900px) {
   body {
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .dashboard {
@@ -428,21 +429,24 @@ body {
     height: auto;
     min-height: 100vh;
     width: 100%;
+    grid-template-columns: unset;
+    grid-template-rows: unset;
+    grid-template-areas: unset;
   }
 
   .panel-left {
     order: 1;
     width: 100%;
     height: auto;
-    max-height: none;
     overflow: visible;
+    flex-shrink: 0;
   }
 
   .terminal-area {
     order: 2;
     width: 100%;
     height: auto;
-    min-height: 500px;
+    flex-shrink: 0;
   }
 
   .top-row {
@@ -454,19 +458,26 @@ body {
   .feed-block {
     border-right: none;
     border-bottom: 1px solid var(--border-soft);
-    min-height: 150px;
+    min-height: 180px;
+    flex: none;
+  }
+
+  .feed-output {
+    max-height: 200px;
   }
 
   .activity-block {
+    flex: none;
     width: 100%;
     flex-direction: row;
     border-bottom: 1px solid var(--border-soft);
+    min-height: 120px;
   }
 
   .activity-section {
     flex: 1;
-    width: auto;
     border-right: 1px solid var(--border-soft);
+    min-width: 0;
   }
 
   .activity-section:last-child {
@@ -474,15 +485,21 @@ body {
   }
 
   .shell-block {
-    height: auto;
-    min-height: 200px;
+    flex: none;
+    min-height: 220px;
+  }
+
+  .terminal-output {
+    min-height: 120px;
+    max-height: 200px;
   }
 
   .panel-right {
     order: 3;
     width: 100%;
     height: auto;
-    max-height: 180px;
+    min-height: 160px;
+    flex-shrink: 0;
   }
 
   .book-list {
@@ -491,10 +508,12 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     gap: 8px;
+    padding-bottom: 8px;
+    min-height: 90px;
   }
 
   .book-tile {
-    min-width: 140px;
+    min-width: 160px;
     flex-shrink: 0;
   }
 }
