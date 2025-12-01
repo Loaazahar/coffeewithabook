@@ -32,8 +32,6 @@ body {
   overflow: hidden;
 }
 
-/* DASHBOARD GRID */
-
 .dashboard {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 280px;
@@ -45,8 +43,6 @@ body {
   width: 100vw;
 }
 
-/* PANELS */
-
 .panel {
   background: rgba(6, 13, 24, 0.96);
   border: 1px solid var(--border-soft);
@@ -55,7 +51,7 @@ body {
   flex-direction: column;
   gap: 12px;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .panel-left {
@@ -74,21 +70,16 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.panel-header::after {
-  content: "";
-  flex: 1;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-soft);
-  margin-left: 8px;
+  gap: 12px;
 }
-
-/* LANGUAGE BUTTONS */
 
 #langButtons {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .langBtn {
@@ -106,12 +97,10 @@ body {
   border-color: var(--accent);
 }
 
-/* LEFT PANEL CONTENT */
-
 .time-block {
   border: 1px solid var(--border-soft);
   padding: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .time {
@@ -127,7 +116,7 @@ body {
 
 .stats-block,
 .session-block,
-.weather-block {
+.info-block {
   border: 1px solid var(--border-soft);
   padding: 8px;
 }
@@ -162,7 +151,27 @@ body {
   color: var(--accent-amber);
 }
 
-/* CENTER AREA: FEED + SHELL */
+#currentReadersContainer,
+#quoteContainer,
+#vocabContainer,
+#moodContainer {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+#currentReadersContainer {
+  color: var(--accent-amber);
+}
+
+#quoteContainer,
+#vocabContainer {
+  color: var(--accent-amber);
+}
+
+#moodContainer {
+  color: var(--text-main);
+}
 
 .terminal-area {
   grid-area: center;
@@ -173,8 +182,6 @@ body {
   background: var(--bg-terminal);
   overflow: hidden;
 }
-
-/* upper feed */
 
 .feed-block {
   flex: 1.1;
@@ -217,8 +224,6 @@ body {
   font-size: 11px;
   color: var(--text-main);
 }
-
-/* lower shell */
 
 .shell-block {
   flex: 0.9;
@@ -280,10 +285,8 @@ body {
   color: var(--text-main);
   font-family: var(--font-mono);
   font-size: 12px;
-  caret-color: var(--accent); /* green real cursor */
+  caret-color: var(--accent);
 }
-
-/* RIGHT PANEL */
 
 .graph-block,
 .recent-block {
@@ -316,8 +319,6 @@ body {
   margin-top: 4px;
   line-height: 1.5;
 }
-
-/* FOOTER / BOOK BAR */
 
 .footer-bar {
   grid-area: footer;
@@ -385,8 +386,6 @@ body {
   color: var(--accent);
 }
 
-/* SCROLLBARS */
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -404,8 +403,6 @@ body {
   background: #24354b;
 }
 
-/* SMALL HELPERS */
-
 .accent {
   color: var(--accent);
 }
@@ -413,8 +410,6 @@ body {
 .accent-amber {
   color: var(--accent-amber);
 }
-
-/* RESPONSIVE */
 
 @media (max-width: 900px) {
   .dashboard {
