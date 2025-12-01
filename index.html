@@ -110,31 +110,30 @@
 
     </main>
 
-    <!-- RIGHT PANEL -->
+    <!-- RIGHT PANEL: BOOKSHELF (swapped) -->
     <aside class="panel panel-right">
       <div class="panel-header">
-        <span id="activityLabel">ACTIVITY</span>
+        <span id="bookshelfLabel">BOOKSHELF</span>
       </div>
-
-      <div class="graph-block">
-        <div class="stats-title" id="streakLabel">READING STREAK</div>
-        <div class="recent-text" id="streakText">
-          Loading streak…
-        </div>
-      </div>
-
-      <div class="recent-block">
-        <div class="stats-title" id="lastUpdateLabel">RECENT ACTIVITY</div>
-        <div class="recent-text" id="recentUpdate">
-          No activity yet.
-        </div>
-      </div>
+      <div class="book-list" id="bookStrip"></div>
     </aside>
 
-    <!-- BOTTOM BOOK STRIP -->
+    <!-- BOTTOM: ACTIVITY (swapped) -->
     <footer class="footer-bar">
-      <div class="footer-header" id="bookshelfLabel">BOOKSHELF</div>
-      <div class="book-strip" id="bookStrip"></div>
+      <div class="activity-container">
+        <div class="activity-section">
+          <div class="stats-title" id="streakLabel">READING STREAK</div>
+          <div class="recent-text" id="streakText">
+            Loading streak…
+          </div>
+        </div>
+        <div class="activity-section">
+          <div class="stats-title" id="lastUpdateLabel">RECENT ACTIVITY</div>
+          <div class="recent-text" id="recentUpdate">
+            No activity yet.
+          </div>
+        </div>
+      </div>
     </footer>
 
   </div>
@@ -142,4 +141,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
