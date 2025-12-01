@@ -404,9 +404,12 @@ function updateActivitySidebar() {
 
 // ---------- STREAK ----------
 function updateStreak() {
-  const myEvents = events.filter(
-    (ev) => ev.type === "progress" && (ev.ownerUser === currentUser || ev.user === currentUser)
-  );
+  // If guest, show all activity; if logged in, show personal activity
+  const myEvents = currentUser === "guest" 
+    ? events.filter((ev) => ev.type === "progress")
+    : events.filter(
+        (ev) => ev.type === "progress" && (ev.ownerUser === currentUser || ev.user === currentUser)
+      );
 
   const today = new Date();
   const days = [];
@@ -418,13 +421,16 @@ function updateStreak() {
   }
 
   myEvents.forEach((ev) => {
-    const dayKey = ev.timestamp.slice(0, 10);
+    const evDate = new Date(ev.timestamp);
+    const dayKey = evDate.toISOString().slice(0, 10);
+    
     let delta = ev.deltaPages;
     if (typeof delta !== "number") {
       const from = ev.fromPages ?? 0;
       const to = ev.toPages ?? from;
       delta = to - from;
     }
+    
     days.forEach((d) => {
       if (d.key === dayKey) d.pages += Math.max(delta, 0);
     });
@@ -437,12 +443,17 @@ function updateStreak() {
   }
 
   const lines = [];
+  
+  const streakLabel = currentUser === "guest" 
+    ? (language === "ko" ? "전체 연속 일수" : language === "ja" ? "全体の連続日数" : "Total Streak")
+    : (language === "ko" ? "연속 일수" : language === "ja" ? "連続日数" : "Streak");
+
   if (language === "ko") {
-    lines.push(`연속 일수: ${streak}일`);
+    lines.push(`${streakLabel}: ${streak}일`);
   } else if (language === "ja") {
-    lines.push(`連続日数: ${streak}日`);
+    lines.push(`${streakLabel}: ${streak}日`);
   } else {
-    lines.push(`Streak: ${streak} day(s)`);
+    lines.push(`${streakLabel}: ${streak} day(s)`);
   }
 
   days.forEach((d) => {
@@ -468,7 +479,6 @@ function formatDateShort(date) {
     return `${monthNames[month]} ${day}`;
   }
 }
-
 // ---------- WEATHER (DAEGU) ----------
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
@@ -1194,4 +1204,5 @@ updateClock();
 refreshStats();
 renderBookStrip();
 updateUILabels();
+
 
