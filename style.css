@@ -34,8 +34,8 @@ body {
 
 .dashboard {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 280px;
-  grid-template-rows: minmax(0, 1fr) 140px;
+  grid-template-columns: 300px minmax(0, 1fr) 240px;
+  grid-template-rows: minmax(0, 1fr) 100px;
   grid-template-areas:
     "left center right"
     "footer footer footer";
@@ -74,6 +74,7 @@ body {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border-soft);
   gap: 12px;
+  flex-shrink: 0;
 }
 
 #langButtons {
@@ -288,68 +289,18 @@ body {
   caret-color: var(--accent);
 }
 
-.graph-block,
-.recent-block {
-  border: 1px solid var(--border-soft);
-  padding: 8px;
-}
-
-.fake-graph {
-  position: relative;
-  height: 70px;
-  border: 1px solid var(--border-soft);
-  margin-top: 4px;
-  overflow: hidden;
-}
-
-.graph-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: #1f3550;
-}
-
-.graph-line:nth-child(1) { top: 20%; }
-.graph-line:nth-child(2) { top: 50%; }
-.graph-line:nth-child(3) { top: 80%; }
-
-.recent-text {
-  font-size: 11px;
-  margin-top: 4px;
-  line-height: 1.5;
-}
-
-.footer-bar {
-  grid-area: footer;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-soft);
-  border-top: 0;
+/* RIGHT PANEL: BOOKSHELF */
+.book-list {
   display: flex;
   flex-direction: column;
-  padding: 4px 10px 8px;
-}
-
-.footer-header {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.book-strip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 3px 0;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .book-tile {
-  min-width: 120px;
   border: 1px solid var(--border-soft);
-  padding: 4px 6px;
+  padding: 6px 8px;
   font-size: 11px;
   cursor: pointer;
   background: #07101d;
@@ -386,6 +337,36 @@ body {
   color: var(--accent);
 }
 
+/* FOOTER: ACTIVITY */
+.footer-bar {
+  grid-area: footer;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px;
+}
+
+.activity-container {
+  display: flex;
+  gap: 24px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.activity-section {
+  flex: 1;
+  border: 1px solid var(--border-soft);
+  padding: 8px 12px;
+  overflow-y: auto;
+}
+
+.recent-text {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -411,14 +392,55 @@ body {
   color: var(--accent-amber);
 }
 
+/* MOBILE */
 @media (max-width: 900px) {
   .dashboard {
     grid-template-columns: 1fr;
-    grid-template-rows: 220px minmax(0, 1fr) 220px 120px;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "left"
       "center"
       "right"
       "footer";
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .panel-left {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .panel-right {
+    max-height: 200px;
+    padding: 8px 12px;
+  }
+
+  .book-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+  }
+
+  .book-tile {
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .footer-bar {
+    padding: 8px 12px;
+  }
+
+  .activity-container {
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .activity-section {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
   }
 }
