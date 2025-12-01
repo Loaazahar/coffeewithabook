@@ -91,7 +91,6 @@ function loadBooks() {
   } else {
     books = [];
   }
-  // ensure owner + defaults
   books.forEach((b) => {
     if (!b.owner) b.owner = DEFAULT_ADMIN;
     if (!b.comments) b.comments = [];
@@ -195,7 +194,7 @@ function updateUILabels() {
   t("lblBooks", "Books", "책 수", "冊数");
   t("lblFinished", "Finished", "다 읽음", "読了");
   t("lblProgress", "In Progress", "진행중", "進行中");
-  t("lblPages", "Pages Read", "읽은 페이지", "読んだページ수");
+  t("lblPages", "Pages Read", "읽은 페이지", "読んだページ数");
   t("feedTitleLabel", "GLOBAL READING FEED", "전체 읽기 피드", "グローバル読書フィード");
 
   updateSessionInfo();
@@ -387,6 +386,10 @@ function updateActivitySidebar() {
     text = `${user} removed user "${latest.targetUser}"`;
   } else if (latest.type === "book_remove") {
     text = `${user} removed book "${latest.bookTitle}"`;
+  } else if (latest.type === "password_self") {
+    text = `${user} updated their password`;
+  } else if (latest.type === "password_admin") {
+    text = `${user} reset password for "${latest.targetUser}"`;
   } else {
     text = `${user} did ${latest.type}`;
   }
@@ -490,6 +493,44 @@ function weatherCodeToText(code) {
   return language === "ko" ? info.ko : language === "ja" ? info.ja : info.en;
 }
 
+function buildStaticInfoPanel(moodText) {
+  let block = "";
+
+  // CURRENT READERS
+  const readers = books
+    .filter(b => b.pagesRead > 0)
+    .map(b => `${b.owner} → ${b.pagesRead}p`);
+
+  if (readers.length) {
+    block += `<span class="accent-amber">📖 CURRENT READERS</span><br>`;
+    block += readers.join("<br>") + "<br><br>";
+  }
+
+  // QUOTE (multilingual)
+  block += `<span class="accent-amber">QUOTE</span><br>`;
+  block += `"本は心の窓である"<br>`;
+  block += `책은 마음의 창이다<br>`;
+  block += `<i>Books are windows of the soul</i><br><br>`;
+
+  // VOCAB
+  block += `<span class="accent-amber">VOCAB</span><br>`;
+  block += `巡り合う（めぐりあう）<br>`;
+  block += `우연히 만나다<br>`;
+  block += `<i>to encounter by chance</i><br><br>`;
+
+  // MOOD (from weather)
+  block += `<span class="accent-amber">MOOD</span><br>`;
+  block += moodText || (
+    language === "ko"
+      ? "📖 조용한 독서 시간"
+      : language === "ja"
+      ? "📖 静かな読書時間"
+      : "📖 Quiet reading time"
+  );
+
+  return block;
+}
+
 async function fetchWeather() {
   try {
     const url =
@@ -514,9 +555,10 @@ async function fetchWeather() {
     }
 
     const cw = data.current_weather;
-    const temp = cw.temperature;
+    const temp = Math.ceil(cw.temperature);
     const wCode = cw.weathercode;
 
+    // humidity from hourly
     let humidity = null;
     if (data.hourly) {
       const tIndex = data.hourly.time.indexOf(cw.time);
@@ -530,10 +572,75 @@ async function fetchWeather() {
     const dMin = data.daily.temperature_2m_min;
     const dCodes = data.daily.weathercode;
 
+    const condText = weatherCodeToText(wCode);
+
+    // mood mapping
+    let mood;
+    switch (wCode) {
+      case 0:
+      case 1:
+        mood = {
+          en: "☀️ Sunshine reading — pages feel lighter today",
+          ko: "☀️ 햇살 독서 — 마음도 환해지는 느낌",
+          ja: "☀️ 陽だまり読書 — 心がぽかぽか",
+        };
+        break;
+      case 2:
+        mood = {
+          en: "⛅ Soft sky reading — a calm atmosphere for stories",
+          ko: "⛅ 잔잔한 하늘 독서 — 이야기 듣기 좋은 날씨",
+          ja: "⛅ 雲間読書 — 静かな読書時間",
+        };
+        break;
+      case 3:
+        mood = {
+          en: "☁️ Grey day reading — perfect for introspection",
+          ko: "☁️ 차분한 흐림 독서 — 생각이 깊어지는 시간",
+          ja: "☁️ 曇り読書 — 静かに読み込む雰囲気",
+        };
+        break;
+      case 45:
+      case 48:
+        mood = {
+          en: "🌫 Misty reading — imagination moves softly",
+          ko: "🌫 안개 독서 — 상상이 천천히 흘러가요",
+          ja: "🌫 霧の読書 — 思考がふわっと広がる",
+        };
+        break;
+      case 61:
+      case 80:
+        mood = {
+          en: "🌧 Rainy reading — the raindrops are our background music",
+          ko: "🌧 빗소리 독서 — 자연의 ASMR",
+          ja: "🌧 雨音読書 — 雨がBGMになる",
+        };
+        break;
+      case 71:
+        mood = {
+          en: "❄️ Snowy reading — pages feel warmer in your hands",
+          ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
+          ja: "❄️ 雪の読書 — 本が手の中で温かい",
+        };
+        break;
+      case 95:
+        mood = {
+          en: "⚡ Stormy reading — dramatic weather suits dramatic stories",
+          ko: "⚡ 폭우 독서 — 감정이 더 짙어지는 시간",
+          ja: "⚡ 雷雨読書 — 雰囲気が物語を深める",
+        };
+        break;
+      default:
+        mood = {
+          en: "📖 Quiet reading time",
+          ko: "📖 조용한 독서 시간",
+          ja: "📖 静かな読書時間",
+        };
+    }
+    const moodText = language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
+
     const lines = [];
 
     let headingLine, todayLine, humStr, nextTitle;
-    const condText = weatherCodeToText(wCode);
 
     if (language === "ko") {
       headingLine = "대구 날씨";
@@ -558,16 +665,18 @@ async function fetchWeather() {
     lines.push("");
     lines.push(nextTitle);
 
+    // Next 3 days forecast (ceil temps)
     for (let i = 1; i <= 3 && i < dTimes.length; i++) {
       const dDate = new Date(dTimes[i]);
       const wd = getWeekdayName(dDate.getDay());
-      const max = dMax[i];
-      const min = dMin[i];
+      const max = Math.ceil(dMax[i]);
+      const min = Math.ceil(dMin[i]);
       const dCond = weatherCodeToText(dCodes[i]);
       lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
     }
 
-    weatherDataEl.innerHTML = lines.join("<br>");
+    weatherDataEl.innerHTML =
+      lines.join("<br>") + "<br><br>" + buildStaticInfoPanel(moodText);
   } catch (e) {
     weatherDataEl.textContent =
       language === "ko"
@@ -595,18 +704,19 @@ function canEditBook(book) {
 function cmd_help() {
   addLine("Commands:", "success");
   addLine("  help                   – show this help");
-  addLine("  list [user]            – list books");
+  addLine("  list [user]            – list books (all or by user)");
   addLine("  view <id>              – view one book");
   addLine("  weather                – refresh Daegu weather");
   addLine("  lang en|ko|ja          – change UI language");
   addLine("  login                  – login as user");
-  addLine("  logout                 – logout");
+  addLine("  logout                 – logout to guest");
   addLine("  changepass             – change your password");
-  addLine("Admin:");
-  addLine("  createuser <name>      – create user");
+  addLine("Admin:", "success");
+  addLine("  createuser <name>      – create member");
   addLine("  removeuser <name>      – remove user");
+  addLine("  listusers              – list users");
   addLine("  setpass <username>     – set password for a user");
-  addLine("  add                    – add new book");
+  addLine("  add                    – add new book (for you)");
   addLine("  edit <id>              – edit book meta");
   addLine("  update <id> <page>     – update pages read");
   addLine("  comment <id> <text>    – add comment");
@@ -943,6 +1053,19 @@ function cmd_remove(args) {
   });
 }
 
+function cmd_weather() {
+  addLine(
+    language === "ko"
+      ? "대구 날씨를 새로고침합니다."
+      : language === "ja"
+      ? "大邱の天気を更新します。"
+      : "Refreshing Daegu weather…",
+    "success"
+  );
+  fetchWeather();
+}
+
+// password: self-change
 function cmd_changepass() {
   if (currentUser === "guest") {
     addLine("Login required.", "error");
@@ -968,6 +1091,7 @@ function cmd_changepass() {
   });
 }
 
+// password: admin reset
 function cmd_setpass(args) {
   if (!requireAdmin()) return;
   const target = args[0];
@@ -992,18 +1116,6 @@ function cmd_setpass(args) {
     user: currentUser,
     targetUser: target
   });
-}
-
-function cmd_weather() {
-  addLine(
-    language === "ko"
-      ? "대구 날씨를 새로고침합니다."
-      : language === "ja"
-      ? "大邱の天気を更新します。"
-      : "Refreshing Daegu weather…",
-    "success"
-  );
-  fetchWeather();
 }
 
 // ---------- COMMAND DISPATCH ----------
@@ -1057,4 +1169,3 @@ updateClock();
 refreshStats();
 renderBookStrip();
 updateUILabels(); // also fetches weather, feed, activity, streak
-
