@@ -5,14 +5,18 @@ const STORAGE_KEY_USERS = "coffee_console_users_v1";
 const STORAGE_KEY_EVENTS = "coffee_console_events_v1";
 
 // ---------- STATE ----------
-let language = localStorage.getItem(STORAGE_KEY_LANG) || "en"; // "en" | "ko" | "ja"
+let language = localStorage.getItem(STORAGE_KEY_LANG) || "en";
 
-let users = {};          // username -> { role, pass, active }
+let users = {};
 let currentUser = "guest";
-let currentRole = "guest"; // "guest" | "admin" | "member"
+let currentRole = "guest";
 
-let books = [];          // [{ id, owner, title, author, totalPages, pagesRead, comments, lastUpdate }]
-let events = [];         // activity events (for feed + streak)
+let books = [];
+let events = [];
+
+// Command history
+let commandHistory = [];
+let historyIndex = -1;
 
 // ---------- CONSTANTS ----------
 const DEFAULT_ADMIN = "loaa";
@@ -40,6 +44,52 @@ const currentReadersEl = document.getElementById("currentReadersContainer");
 const quoteEl = document.getElementById("quoteContainer");
 const vocabEl = document.getElementById("vocabContainer");
 const moodEl = document.getElementById("moodContainer");
+
+// Modal elements
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const modalInput = document.getElementById("modalInput");
+const modalOk = document.getElementById("modalOk");
+const modalCancel = document.getElementById("modalCancel");
+
+// ---------- CUSTOM MODAL PROMPT ----------
+function customPrompt(title, isPassword = false) {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalInput.type = isPassword ? "password" : "text";
+    modalInput.value = "";
+    modalOverlay.classList.add("active");
+    modalInput.focus();
+
+    function cleanup() {
+      modalOverlay.classList.remove("active");
+      modalOk.removeEventListener("click", onOk);
+      modalCancel.removeEventListener("click", onCancel);
+      modalInput.removeEventListener("keydown", onKey);
+      inputEl.focus();
+    }
+
+    function onOk() {
+      const val = modalInput.value;
+      cleanup();
+      resolve(val || null);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(null);
+    }
+
+    function onKey(e) {
+      if (e.key === "Enter") onOk();
+      if (e.key === "Escape") onCancel();
+    }
+
+    modalOk.addEventListener("click", onOk);
+    modalCancel.addEventListener("click", onCancel);
+    modalInput.addEventListener("keydown", onKey);
+  });
+}
 
 // ---------- UTILITIES ----------
 function addLine(text, cls) {
@@ -73,7 +123,6 @@ function loadUsers() {
   } else {
     users = {};
   }
-  // ensure default admin exists
   if (!users[DEFAULT_ADMIN]) {
     users[DEFAULT_ADMIN] = {
       role: "admin",
@@ -192,7 +241,6 @@ function updateUILabels() {
   t("sessionTitle", "SESSION INFO", "세션 정보", "セッション情報");
   t("bookshelfLabel", "BOOKSHELF", "책 목록", "本棚");
   t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
-  t("activityLabel", "ACTIVITY", "활동", "アクティビティ");
   t("streakLabel", "READING STREAK", "읽기 기록", "読書記録");
   t("lastUpdateLabel", "RECENT ACTIVITY", "최근 활동", "最近のアクティビティ");
   t("weatherTitle", "WEATHER", "날씨", "天気");
@@ -213,7 +261,6 @@ function updateUILabels() {
   localStorage.setItem(STORAGE_KEY_LANG, language);
 }
 
-// language button clicks
 document.querySelectorAll(".langBtn").forEach((btn) => {
   btn.addEventListener("click", () => {
     language = btn.dataset.lang;
@@ -286,7 +333,6 @@ function renderFeed() {
     return;
   }
 
-  // group by user -> book
   const grouped = {};
   relevant.forEach((ev) => {
     const user = ev.ownerUser || ev.user || "unknown";
@@ -333,7 +379,6 @@ function renderFeed() {
         const delta = typeof ev.deltaPages === "number" ? ev.deltaPages : null;
 
         const lines = [];
-
         lines.push(`👤 ${user}`);
 
         if (from !== null && to !== null) {
@@ -404,7 +449,6 @@ function updateActivitySidebar() {
 
 // ---------- STREAK ----------
 function updateStreak() {
-  // If guest, show all activity; if logged in, show personal activity
   const myEvents = currentUser === "guest" 
     ? events.filter((ev) => ev.type === "progress")
     : events.filter(
@@ -479,6 +523,7 @@ function formatDateShort(date) {
     return `${monthNames[month]} ${day}`;
   }
 }
+
 // ---------- WEATHER (DAEGU) ----------
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
@@ -586,7 +631,6 @@ async function fetchWeather() {
     const temp = Math.ceil(cw.temperature);
     const wCode = cw.weathercode;
 
-    // humidity from hourly
     let humidity = null;
     if (data.hourly) {
       const tIndex = data.hourly.time.indexOf(cw.time);
@@ -602,7 +646,6 @@ async function fetchWeather() {
 
     const condText = weatherCodeToText(wCode);
 
-    // mood mapping
     let mood;
     switch (wCode) {
       case 0:
@@ -693,7 +736,6 @@ async function fetchWeather() {
     lines.push("");
     lines.push(nextTitle);
 
-    // Next 3 days forecast (ceil temps)
     for (let i = 1; i <= 3 && i < dTimes.length; i++) {
       const dDate = new Date(dTimes[i]);
       const wd = getWeekdayName(dDate.getDay());
@@ -813,10 +855,14 @@ function cmd_lang(args) {
   addLine("Language set to " + v, "success");
 }
 
-function cmd_login() {
-  const username = prompt("username:");
-  const pass = prompt("password:");
-  if (!username || !pass) {
+async function cmd_login() {
+  const username = await customPrompt("Username:");
+  if (!username) {
+    addLine("Login cancelled.", "error");
+    return;
+  }
+  const pass = await customPrompt("Password:", true);
+  if (!pass) {
     addLine("Login cancelled.", "error");
     return;
   }
@@ -842,11 +888,11 @@ function cmd_logout() {
   addLine("Logged out.", "success");
 }
 
-function cmd_createuser(args) {
+async function cmd_createuser(args) {
   if (!requireAdmin()) return;
   let username = args[0];
   if (!username) {
-    username = prompt("username:");
+    username = await customPrompt("Username:");
   }
   if (!username) {
     addLine("No username provided.", "error");
@@ -856,7 +902,7 @@ function cmd_createuser(args) {
     addLine("User already exists.", "error");
     return;
   }
-  const pass = prompt("password:");
+  const pass = await customPrompt("Password:", true);
   if (!pass) {
     addLine("No password provided.", "error");
     return;
@@ -908,15 +954,20 @@ function cmd_listusers() {
   members.forEach((n) => addLine("  - " + n));
 }
 
-function cmd_add() {
+async function cmd_add() {
   if (currentRole === "guest") {
     addLine("Login required to add books.", "error");
     return;
   }
-  const title = prompt("Title:");
-  const author = prompt("Author:");
-  const total = Number(prompt("Total pages:"));
-  if (!title || !total) {
+  const title = await customPrompt("Title:");
+  if (!title) {
+    addLine("Aborted.", "error");
+    return;
+  }
+  const author = await customPrompt("Author:");
+  const totalStr = await customPrompt("Total pages:");
+  const total = Number(totalStr);
+  if (!total) {
     addLine("Aborted.", "error");
     return;
   }
@@ -946,7 +997,7 @@ function cmd_add() {
   });
 }
 
-function cmd_edit(args) {
+async function cmd_edit(args) {
   if (currentRole === "guest") {
     addLine("Login required.", "error");
     return;
@@ -961,9 +1012,10 @@ function cmd_edit(args) {
     addLine("Not your book.", "error");
     return;
   }
-  const newTitle = prompt("New title:", book.title);
-  const newAuthor = prompt("New author:", book.author);
-  const newTotal = Number(prompt("New total pages:", book.totalPages));
+  const newTitle = await customPrompt(`New title (current: ${book.title}):`);
+  const newAuthor = await customPrompt(`New author (current: ${book.author}):`);
+  const newTotalStr = await customPrompt(`New total pages (current: ${book.totalPages}):`);
+  const newTotal = Number(newTotalStr);
 
   if (newTitle) book.title = newTitle;
   if (newAuthor) book.author = newAuthor;
@@ -1102,18 +1154,18 @@ function cmd_weather() {
   fetchWeather();
 }
 
-function cmd_changepass() {
+async function cmd_changepass() {
   if (currentUser === "guest") {
     addLine("Login required.", "error");
     return;
   }
-  const oldp = prompt("Old password:");
+  const oldp = await customPrompt("Old password:", true);
   if (!oldp) return;
   if (users[currentUser].pass !== oldp) {
     addLine("Incorrect password.", "error");
     return;
   }
-  const newp = prompt("New password:");
+  const newp = await customPrompt("New password:", true);
   if (!newp) {
     addLine("No new password entered.", "error");
     return;
@@ -1127,7 +1179,7 @@ function cmd_changepass() {
   });
 }
 
-function cmd_setpass(args) {
+async function cmd_setpass(args) {
   if (!requireAdmin()) return;
   const target = args[0];
   if (!target) {
@@ -1138,7 +1190,7 @@ function cmd_setpass(args) {
     addLine("User not found.", "error");
     return;
   }
-  const newp = prompt(`New password for ${target}:`);
+  const newp = await customPrompt(`New password for ${target}:`, true);
   if (!newp) {
     addLine("No new password entered.", "error");
     return;
@@ -1154,9 +1206,14 @@ function cmd_setpass(args) {
 }
 
 // ---------- COMMAND DISPATCH ----------
-function handleCommand(input) {
+async function handleCommand(input) {
   const raw = input.trim();
   if (!raw) return;
+  
+  // Add to history
+  commandHistory.push(raw);
+  historyIndex = commandHistory.length;
+  
   addLine("> " + raw);
 
   const parts = raw.split(" ");
@@ -1168,19 +1225,19 @@ function handleCommand(input) {
     case "list": cmd_list(args); break;
     case "view": cmd_view(args); break;
     case "lang": cmd_lang(args); break;
-    case "login": cmd_login(); break;
+    case "login": await cmd_login(); break;
     case "logout": cmd_logout(); break;
-    case "createuser": cmd_createuser(args); break;
+    case "createuser": await cmd_createuser(args); break;
     case "removeuser": cmd_removeuser(args); break;
     case "listusers": cmd_listusers(); break;
-    case "add": cmd_add(); break;
-    case "edit": cmd_edit(args); break;
+    case "add": await cmd_add(); break;
+    case "edit": await cmd_edit(args); break;
     case "update": cmd_update(args); break;
     case "comment": cmd_comment(args); break;
     case "remove": cmd_remove(args); break;
     case "weather": cmd_weather(); break;
-    case "changepass": cmd_changepass(); break;
-    case "setpass": cmd_setpass(args); break;
+    case "changepass": await cmd_changepass(); break;
+    case "setpass": await cmd_setpass(args); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
@@ -1192,6 +1249,24 @@ inputEl.addEventListener("keydown", (e) => {
     const v = inputEl.value;
     inputEl.value = "";
     handleCommand(v);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (commandHistory.length > 0 && historyIndex > 0) {
+      historyIndex--;
+      inputEl.value = commandHistory[historyIndex];
+      // Move cursor to end
+      setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+    }
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (historyIndex < commandHistory.length - 1) {
+      historyIndex++;
+      inputEl.value = commandHistory[historyIndex];
+      setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+    } else {
+      historyIndex = commandHistory.length;
+      inputEl.value = "";
+    }
   }
 });
 
@@ -1204,5 +1279,3 @@ updateClock();
 refreshStats();
 renderBookStrip();
 updateUILabels();
-
-
