@@ -36,7 +36,7 @@ body {
 
 .dashboard {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 240px;
+  grid-template-columns: 300px minmax(0, 1fr) 280px;
   grid-template-rows: minmax(0, 1fr) 140px;
   grid-template-areas:
     "left center right"
