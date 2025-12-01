@@ -424,64 +424,66 @@ body {
 
 /* ===================== MOBILE ===================== */
 @media (max-width: 900px) {
+  html, body {
+    overflow: auto;
+    height: auto;
+  }
+
   body {
-    overflow-y: auto;
     overflow-x: hidden;
   }
 
   .dashboard {
-    display: flex;
-    flex-direction: column;
+    display: block;
     height: auto;
     min-height: 100vh;
     width: 100%;
   }
 
   .panel-left {
-    order: 1;
     width: 100%;
     height: auto;
     overflow: visible;
-    flex-shrink: 0;
+    border: 1px solid var(--border-soft);
+    border-bottom: none;
   }
 
   .terminal-area {
-    order: 2;
+    display: block;
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
+    height: auto;
+    border: 1px solid var(--border-soft);
+    border-bottom: none;
   }
 
   .top-row {
-    display: flex;
-    flex-direction: column;
-    flex: none;
+    display: block;
     height: auto;
+    border-bottom: 1px solid var(--border-soft);
   }
 
   .feed-block {
     border-right: none;
     border-bottom: 1px solid var(--border-soft);
-    min-height: 180px;
-    flex: none;
+    min-height: 150px;
+    height: auto;
   }
 
   .feed-output {
-    max-height: 200px;
+    max-height: 180px;
+    overflow-y: auto;
   }
 
   .activity-block {
     display: flex;
     flex-direction: row;
-    grid-column: unset;
-    border-bottom: 1px solid var(--border-soft);
-    min-height: 120px;
-    flex: none;
+    height: auto;
+    min-height: 100px;
   }
 
   .activity-section {
     flex: 1;
+    min-height: 100px;
     border-right: 1px solid var(--border-soft);
   }
 
@@ -489,22 +491,27 @@ body {
     border-right: none;
   }
 
+  .activity-section .recent-text {
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
   .shell-block {
-    flex: none;
-    min-height: 220px;
+    min-height: 200px;
+    height: auto;
   }
 
   .terminal-output {
-    min-height: 120px;
-    max-height: 200px;
+    min-height: 100px;
+    max-height: 180px;
+    overflow-y: auto;
   }
 
   .panel-right {
-    order: 3;
     width: 100%;
     height: auto;
-    min-height: 160px;
-    flex-shrink: 0;
+    min-height: 140px;
+    border: 1px solid var(--border-soft);
   }
 
   .book-list {
@@ -513,12 +520,12 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     gap: 8px;
-    padding-bottom: 8px;
-    min-height: 90px;
+    padding: 8px 0;
+    min-height: 80px;
   }
 
   .book-tile {
-    min-width: 160px;
+    min-width: 150px;
     flex-shrink: 0;
   }
 }
