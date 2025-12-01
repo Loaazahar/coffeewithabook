@@ -77,20 +77,37 @@
       </div>
     </aside>
 
-    <!-- CENTER: FEED + SHELL -->
+    <!-- CENTER AREA -->
     <main class="terminal-area">
 
-      <!-- UPPER: GLOBAL READING FEED -->
-      <section class="feed-block">
-        <div class="terminal-header">
-          <span id="feedTitleLabel">GLOBAL READING FEED</span>
+      <!-- TOP ROW: FEED + STREAK + RECENT -->
+      <section class="top-row">
+        <div class="feed-block">
+          <div class="terminal-header">
+            <span id="feedTitleLabel">GLOBAL READING FEED</span>
+          </div>
+          <div class="feed-output" id="feedOutput">
+            <div class="line">No activity yet.</div>
+          </div>
         </div>
-        <div class="feed-output" id="feedOutput">
-          <div class="line">No activity yet.</div>
+
+        <div class="activity-block">
+          <div class="activity-section">
+            <div class="stats-title" id="streakLabel">READING STREAK</div>
+            <div class="recent-text" id="streakText">
+              Loading streak…
+            </div>
+          </div>
+          <div class="activity-section">
+            <div class="stats-title" id="lastUpdateLabel">RECENT ACTIVITY</div>
+            <div class="recent-text" id="recentUpdate">
+              No activity yet.
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- LOWER: SHELL -->
+      <!-- BOTTOM: SHELL -->
       <section class="shell-block">
         <div class="terminal-header">
           <span id="shellLabel">MAIN SHELL</span>
@@ -110,31 +127,13 @@
 
     </main>
 
-    <!-- RIGHT PANEL: BOOKSHELF (swapped) -->
+    <!-- RIGHT PANEL: BOOKSHELF -->
     <aside class="panel panel-right">
       <div class="panel-header">
         <span id="bookshelfLabel">BOOKSHELF</span>
       </div>
       <div class="book-list" id="bookStrip"></div>
     </aside>
-
-    <!-- BOTTOM: ACTIVITY (swapped) -->
-    <footer class="footer-bar">
-      <div class="activity-container">
-        <div class="activity-section">
-          <div class="stats-title" id="streakLabel">READING STREAK</div>
-          <div class="recent-text" id="streakText">
-            Loading streak…
-          </div>
-        </div>
-        <div class="activity-section">
-          <div class="stats-title" id="lastUpdateLabel">RECENT ACTIVITY</div>
-          <div class="recent-text" id="recentUpdate">
-            No activity yet.
-          </div>
-        </div>
-      </div>
-    </footer>
 
   </div>
 
