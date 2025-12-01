@@ -1,5 +1,8 @@
-// ---------- STORAGE KEYS (for language only) ----------
+// ---------- STORAGE KEYS ----------
+const STORAGE_KEY_BOOKS = "coffee_console_books";
 const STORAGE_KEY_LANG = "coffee_console_lang";
+const STORAGE_KEY_USERS = "coffee_console_users_v1";
+const STORAGE_KEY_EVENTS = "coffee_console_events_v1";
 
 // ---------- STATE ----------
 let language = localStorage.getItem(STORAGE_KEY_LANG) || "en";
@@ -10,6 +13,10 @@ let currentRole = "guest";
 
 let books = [];
 let events = [];
+
+// Command history
+let commandHistory = [];
+let historyIndex = -1;
 
 // ---------- CONSTANTS ----------
 const DEFAULT_ADMIN = "loaa";
@@ -38,6 +45,52 @@ const quoteEl = document.getElementById("quoteContainer");
 const vocabEl = document.getElementById("vocabContainer");
 const moodEl = document.getElementById("moodContainer");
 
+// Modal elements
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const modalInput = document.getElementById("modalInput");
+const modalOk = document.getElementById("modalOk");
+const modalCancel = document.getElementById("modalCancel");
+
+// ---------- CUSTOM MODAL PROMPT ----------
+function customPrompt(title, isPassword = false) {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalInput.type = isPassword ? "password" : "text";
+    modalInput.value = "";
+    modalOverlay.classList.add("active");
+    modalInput.focus();
+
+    function cleanup() {
+      modalOverlay.classList.remove("active");
+      modalOk.removeEventListener("click", onOk);
+      modalCancel.removeEventListener("click", onCancel);
+      modalInput.removeEventListener("keydown", onKey);
+      inputEl.focus();
+    }
+
+    function onOk() {
+      const val = modalInput.value;
+      cleanup();
+      resolve(val || null);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(null);
+    }
+
+    function onKey(e) {
+      if (e.key === "Enter") onOk();
+      if (e.key === "Escape") onCancel();
+    }
+
+    modalOk.addEventListener("click", onOk);
+    modalCancel.addEventListener("click", onCancel);
+    modalInput.addEventListener("keydown", onKey);
+  });
+}
+
 // ---------- UTILITIES ----------
 function addLine(text, cls) {
   const line = document.createElement("div");
@@ -47,166 +100,74 @@ function addLine(text, cls) {
   outputEl.scrollTop = outputEl.scrollHeight;
 }
 
+function saveBooks() {
+  localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
+}
+
+function saveUsers() {
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+}
+
+function saveEvents() {
+  localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+}
+
+function loadUsers() {
+  const saved = localStorage.getItem(STORAGE_KEY_USERS);
+  if (saved) {
+    try {
+      users = JSON.parse(saved);
+    } catch {
+      users = {};
+    }
+  } else {
+    users = {};
+  }
+  if (!users[DEFAULT_ADMIN]) {
+    users[DEFAULT_ADMIN] = {
+      role: "admin",
+      pass: "books!2026",
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    saveUsers();
+  }
+}
+
+function loadBooks() {
+  const saved = localStorage.getItem(STORAGE_KEY_BOOKS);
+  if (saved) {
+    try {
+      books = JSON.parse(saved);
+    } catch {
+      books = [];
+    }
+  } else {
+    books = [];
+  }
+  books.forEach((b) => {
+    if (!b.owner) b.owner = DEFAULT_ADMIN;
+    if (!b.comments) b.comments = [];
+    if (!b.lastUpdate) b.lastUpdate = new Date().toISOString();
+  });
+}
+
+function loadEvents() {
+  const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
+  if (saved) {
+    try {
+      events = JSON.parse(saved);
+    } catch {
+      events = [];
+    }
+  } else {
+    events = [];
+  }
+}
+
 function formatPercent(book) {
   if (!book.totalPages) return 0;
   return Math.round((book.pagesRead / book.totalPages) * 100);
-}
-
-// ---------- FIREBASE: USERS ----------
-async function loadUsers() {
-  try {
-    const snapshot = await db.collection("users").get();
-    users = {};
-    snapshot.forEach((doc) => {
-      users[doc.id] = doc.data();
-    });
-    
-    if (!users[DEFAULT_ADMIN]) {
-      await db.collection("users").doc(DEFAULT_ADMIN).set({
-        role: "admin",
-        pass: "books!2026",
-        active: true,
-        createdAt: new Date().toISOString()
-      });
-      users[DEFAULT_ADMIN] = {
-        role: "admin",
-        pass: "books!2026",
-        active: true,
-        createdAt: new Date().toISOString()
-      };
-    }
-  } catch (e) {
-    console.error("Error loading users:", e);
-    addLine("Error connecting to database.", "error");
-  }
-}
-
-async function saveUser(username, userData) {
-  try {
-    await db.collection("users").doc(username).set(userData);
-    users[username] = userData;
-  } catch (e) {
-    console.error("Error saving user:", e);
-  }
-}
-
-async function deleteUser(username) {
-  try {
-    await db.collection("users").doc(username).delete();
-    delete users[username];
-  } catch (e) {
-    console.error("Error deleting user:", e);
-  }
-}
-
-// ---------- FIREBASE: BOOKS ----------
-async function loadBooks() {
-  try {
-    const snapshot = await db.collection("books").orderBy("id").get();
-    books = [];
-    snapshot.forEach((doc) => {
-      const book = doc.data();
-      book.docId = doc.id;
-      if (!book.owner) book.owner = DEFAULT_ADMIN;
-      if (!book.comments) book.comments = [];
-      if (!book.lastUpdate) book.lastUpdate = new Date().toISOString();
-      books.push(book);
-    });
-    refreshStats();
-    renderBookStrip();
-    renderCurrentReaders();
-  } catch (e) {
-    console.error("Error loading books:", e);
-    addLine("Error loading books.", "error");
-  }
-}
-
-async function saveBook(book) {
-  try {
-    if (book.docId) {
-      await db.collection("books").doc(book.docId).set(book);
-    } else {
-      const docRef = await db.collection("books").add(book);
-      book.docId = docRef.id;
-    }
-  } catch (e) {
-    console.error("Error saving book:", e);
-  }
-}
-
-async function deleteBook(book) {
-  try {
-    if (book.docId) {
-      await db.collection("books").doc(book.docId).delete();
-    }
-  } catch (e) {
-    console.error("Error deleting book:", e);
-  }
-}
-
-// ---------- FIREBASE: EVENTS ----------
-async function loadEvents() {
-  try {
-    const snapshot = await db.collection("events").orderBy("timestamp", "desc").limit(100).get();
-    events = [];
-    snapshot.forEach((doc) => {
-      events.push(doc.data());
-    });
-    renderFeed();
-    updateActivitySidebar();
-    updateStreak();
-  } catch (e) {
-    console.error("Error loading events:", e);
-  }
-}
-
-async function logEvent(ev) {
-  ev.timestamp = ev.timestamp || new Date().toISOString();
-  try {
-    await db.collection("events").add(ev);
-    events.unshift(ev);
-    renderFeed();
-    updateActivitySidebar();
-    updateStreak();
-  } catch (e) {
-    console.error("Error logging event:", e);
-  }
-}
-
-// ---------- REALTIME LISTENERS ----------
-function setupRealtimeListeners() {
-  db.collection("books").onSnapshot((snapshot) => {
-    books = [];
-    snapshot.forEach((doc) => {
-      const book = doc.data();
-      book.docId = doc.id;
-      if (!book.owner) book.owner = DEFAULT_ADMIN;
-      if (!book.comments) book.comments = [];
-      if (!book.lastUpdate) book.lastUpdate = new Date().toISOString();
-      books.push(book);
-    });
-    books.sort((a, b) => a.id - b.id);
-    refreshStats();
-    renderBookStrip();
-    renderCurrentReaders();
-  });
-
-  db.collection("events").orderBy("timestamp", "desc").limit(100).onSnapshot((snapshot) => {
-    events = [];
-    snapshot.forEach((doc) => {
-      events.push(doc.data());
-    });
-    renderFeed();
-    updateActivitySidebar();
-    updateStreak();
-  });
-
-  db.collection("users").onSnapshot((snapshot) => {
-    users = {};
-    snapshot.forEach((doc) => {
-      users[doc.id] = doc.data();
-    });
-  });
 }
 
 // ---------- CLOCK & DATE ----------
@@ -271,7 +232,8 @@ function updateUILabels() {
   const t = (id, en, ko, ja) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = language === "ko" ? ko : language === "ja" ? ja : en;
+    el.textContent =
+      language === "ko" ? ko : language === "ja" ? ja : en;
   };
 
   t("titleLabel", "COFFEE WITH A BOOK", "책과 커피", "本とコーヒー");
@@ -279,7 +241,6 @@ function updateUILabels() {
   t("sessionTitle", "SESSION INFO", "세션 정보", "セッション情報");
   t("bookshelfLabel", "BOOKSHELF", "책 목록", "本棚");
   t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
-  t("activityLabel", "ACTIVITY", "활동", "アクティビティ");
   t("streakLabel", "READING STREAK", "읽기 기록", "読書記録");
   t("lastUpdateLabel", "RECENT ACTIVITY", "최근 활동", "最近のアクティビティ");
   t("weatherTitle", "WEATHER", "날씨", "天気");
@@ -344,7 +305,16 @@ function renderBookStrip() {
   });
 }
 
-// ---------- FEED / ACTIVITY ----------
+// ---------- EVENTS / FEED / ACTIVITY ----------
+function logEvent(ev) {
+  ev.timestamp = ev.timestamp || new Date().toISOString();
+  events.push(ev);
+  saveEvents();
+  renderFeed();
+  updateActivitySidebar();
+  updateStreak();
+}
+
 function renderFeed() {
   feedOutputEl.innerHTML = "";
   const relevant = events.filter((ev) =>
@@ -447,7 +417,9 @@ function updateActivitySidebar() {
         : "No activity yet.";
     return;
   }
-  const latest = events[0];
+  const latest = events.slice().sort(
+    (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+  )[0];
 
   let text = "";
   const user = latest.user || latest.ownerUser || "unknown";
@@ -883,10 +855,14 @@ function cmd_lang(args) {
   addLine("Language set to " + v, "success");
 }
 
-function cmd_login() {
-  const username = prompt("username:");
-  const pass = prompt("password:");
-  if (!username || !pass) {
+async function cmd_login() {
+  const username = await customPrompt("Username:");
+  if (!username) {
+    addLine("Login cancelled.", "error");
+    return;
+  }
+  const pass = await customPrompt("Password:", true);
+  if (!pass) {
     addLine("Login cancelled.", "error");
     return;
   }
@@ -916,7 +892,7 @@ async function cmd_createuser(args) {
   if (!requireAdmin()) return;
   let username = args[0];
   if (!username) {
-    username = prompt("username:");
+    username = await customPrompt("Username:");
   }
   if (!username) {
     addLine("No username provided.", "error");
@@ -926,23 +902,23 @@ async function cmd_createuser(args) {
     addLine("User already exists.", "error");
     return;
   }
-  const pass = prompt("password:");
+  const pass = await customPrompt("Password:", true);
   if (!pass) {
     addLine("No password provided.", "error");
     return;
   }
-  const userData = {
+  users[username] = {
     role: "member",
     pass,
     active: true,
     createdAt: new Date().toISOString(),
   };
-  await saveUser(username, userData);
+  saveUsers();
   addLine("User created: " + username, "success");
-  await logEvent({ type: "user_add", user: currentUser, targetUser: username });
+  logEvent({ type: "user_add", user: currentUser, targetUser: username });
 }
 
-async function cmd_removeuser(args) {
+function cmd_removeuser(args) {
   if (!requireAdmin()) return;
   const username = args[0];
   if (!username) {
@@ -957,9 +933,10 @@ async function cmd_removeuser(args) {
     addLine("User not found.", "error");
     return;
   }
-  await deleteUser(username);
+  delete users[username];
+  saveUsers();
   addLine("User removed: " + username, "success");
-  await logEvent({ type: "user_remove", user: currentUser, targetUser: username });
+  logEvent({ type: "user_remove", user: currentUser, targetUser: username });
 }
 
 function cmd_listusers() {
@@ -982,10 +959,15 @@ async function cmd_add() {
     addLine("Login required to add books.", "error");
     return;
   }
-  const title = prompt("Title:");
-  const author = prompt("Author:");
-  const total = Number(prompt("Total pages:"));
-  if (!title || !total) {
+  const title = await customPrompt("Title:");
+  if (!title) {
+    addLine("Aborted.", "error");
+    return;
+  }
+  const author = await customPrompt("Author:");
+  const totalStr = await customPrompt("Total pages:");
+  const total = Number(totalStr);
+  if (!total) {
     addLine("Aborted.", "error");
     return;
   }
@@ -1000,13 +982,13 @@ async function cmd_add() {
     comments: [],
     lastUpdate: new Date().toISOString(),
   };
-  await saveBook(book);
   books.push(book);
+  saveBooks();
   refreshStats();
   renderBookStrip();
   renderCurrentReaders();
   addLine(`Book added with id ${id}.`, "success");
-  await logEvent({
+  logEvent({
     type: "book_add",
     user: currentUser,
     ownerUser: currentUser,
@@ -1030,21 +1012,22 @@ async function cmd_edit(args) {
     addLine("Not your book.", "error");
     return;
   }
-  const newTitle = prompt("New title:", book.title);
-  const newAuthor = prompt("New author:", book.author);
-  const newTotal = Number(prompt("New total pages:", book.totalPages));
+  const newTitle = await customPrompt(`New title (current: ${book.title}):`);
+  const newAuthor = await customPrompt(`New author (current: ${book.author}):`);
+  const newTotalStr = await customPrompt(`New total pages (current: ${book.totalPages}):`);
+  const newTotal = Number(newTotalStr);
 
   if (newTitle) book.title = newTitle;
   if (newAuthor) book.author = newAuthor;
   if (newTotal) book.totalPages = newTotal;
   book.lastUpdate = new Date().toISOString();
-  await saveBook(book);
+  saveBooks();
   refreshStats();
   renderBookStrip();
   addLine("Book updated.", "success");
 }
 
-async function cmd_update(args) {
+function cmd_update(args) {
   if (currentRole === "guest") {
     addLine("Login required.", "error");
     return;
@@ -1063,7 +1046,7 @@ async function cmd_update(args) {
   const from = book.pagesRead || 0;
   book.pagesRead = Math.min(pages, book.totalPages || pages);
   book.lastUpdate = new Date().toISOString();
-  await saveBook(book);
+  saveBooks();
   refreshStats();
   renderBookStrip();
   renderCurrentReaders();
@@ -1071,7 +1054,7 @@ async function cmd_update(args) {
 
   const to = book.pagesRead;
   const delta = to - from;
-  await logEvent({
+  logEvent({
     type: "progress",
     user: currentUser,
     ownerUser: book.owner,
@@ -1083,7 +1066,7 @@ async function cmd_update(args) {
   });
 }
 
-async function cmd_comment(args) {
+function cmd_comment(args) {
   if (currentRole === "guest") {
     addLine("Login required.", "error");
     return;
@@ -1111,11 +1094,11 @@ async function cmd_comment(args) {
   };
   book.comments.push(comment);
   book.lastUpdate = comment.timestamp;
-  await saveBook(book);
+  saveBooks();
   refreshStats();
   addLine("Comment added.", "success");
 
-  await logEvent({
+  logEvent({
     type: "comment",
     user: currentUser,
     ownerUser: book.owner,
@@ -1128,7 +1111,7 @@ async function cmd_comment(args) {
   });
 }
 
-async function cmd_remove(args) {
+function cmd_remove(args) {
   if (currentRole === "guest") {
     addLine("Login required.", "error");
     return;
@@ -1144,13 +1127,13 @@ async function cmd_remove(args) {
     addLine("Not your book.", "error");
     return;
   }
-  await deleteBook(book);
   books.splice(idx, 1);
+  saveBooks();
   refreshStats();
   renderBookStrip();
   renderCurrentReaders();
   addLine("Book removed.", "success");
-  await logEvent({
+  logEvent({
     type: "book_remove",
     user: currentUser,
     ownerUser: book.owner,
@@ -1176,21 +1159,21 @@ async function cmd_changepass() {
     addLine("Login required.", "error");
     return;
   }
-  const oldp = prompt("Old password:");
+  const oldp = await customPrompt("Old password:", true);
   if (!oldp) return;
   if (users[currentUser].pass !== oldp) {
     addLine("Incorrect password.", "error");
     return;
   }
-  const newp = prompt("New password:");
+  const newp = await customPrompt("New password:", true);
   if (!newp) {
     addLine("No new password entered.", "error");
     return;
   }
   users[currentUser].pass = newp;
-  await saveUser(currentUser, users[currentUser]);
+  saveUsers();
   addLine("Password updated.", "success");
-  await logEvent({
+  logEvent({
     type: "password_self",
     user: currentUser
   });
@@ -1207,15 +1190,15 @@ async function cmd_setpass(args) {
     addLine("User not found.", "error");
     return;
   }
-  const newp = prompt(`New password for ${target}:`);
+  const newp = await customPrompt(`New password for ${target}:`, true);
   if (!newp) {
     addLine("No new password entered.", "error");
     return;
   }
   users[target].pass = newp;
-  await saveUser(target, users[target]);
+  saveUsers();
   addLine(`Password reset for ${target}`, "success");
-  await logEvent({
+  logEvent({
     type: "password_admin",
     user: currentUser,
     targetUser: target
@@ -1226,6 +1209,11 @@ async function cmd_setpass(args) {
 async function handleCommand(input) {
   const raw = input.trim();
   if (!raw) return;
+  
+  // Add to history
+  commandHistory.push(raw);
+  historyIndex = commandHistory.length;
+  
   addLine("> " + raw);
 
   const parts = raw.split(" ");
@@ -1237,16 +1225,16 @@ async function handleCommand(input) {
     case "list": cmd_list(args); break;
     case "view": cmd_view(args); break;
     case "lang": cmd_lang(args); break;
-    case "login": cmd_login(); break;
+    case "login": await cmd_login(); break;
     case "logout": cmd_logout(); break;
     case "createuser": await cmd_createuser(args); break;
-    case "removeuser": await cmd_removeuser(args); break;
+    case "removeuser": cmd_removeuser(args); break;
     case "listusers": cmd_listusers(); break;
     case "add": await cmd_add(); break;
     case "edit": await cmd_edit(args); break;
-    case "update": await cmd_update(args); break;
-    case "comment": await cmd_comment(args); break;
-    case "remove": await cmd_remove(args); break;
+    case "update": cmd_update(args); break;
+    case "comment": cmd_comment(args); break;
+    case "remove": cmd_remove(args); break;
     case "weather": cmd_weather(); break;
     case "changepass": await cmd_changepass(); break;
     case "setpass": await cmd_setpass(args); break;
@@ -1261,57 +1249,33 @@ inputEl.addEventListener("keydown", (e) => {
     const v = inputEl.value;
     inputEl.value = "";
     handleCommand(v);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (commandHistory.length > 0 && historyIndex > 0) {
+      historyIndex--;
+      inputEl.value = commandHistory[historyIndex];
+      // Move cursor to end
+      setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+    }
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (historyIndex < commandHistory.length - 1) {
+      historyIndex++;
+      inputEl.value = commandHistory[historyIndex];
+      setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+    } else {
+      historyIndex = commandHistory.length;
+      inputEl.value = "";
+    }
   }
 });
 
 // ---------- INIT ----------
-async function init() {
-  addLine("Connecting to database...", "success");
-  
-  try {
-    await loadUsers();
-    await loadBooks();
-    await loadEvents();
-    
-    setupRealtimeListeners();
-    
-    updateUserLabel();
-    updateClock();
-    refreshStats();
-    renderBookStrip();
-    updateUILabels();
-    
-    addLine("Connected! Data synced across all devices.", "success");
-  } catch (e) {
-    console.error("Init error:", e);
-    addLine("Error connecting to database. Check console.", "error");
-  }
-}
-
-init();
-```
-
----
-
-**What changed:**
-
-1. **Firebase SDK** added to HTML
-2. **Firestore collections**: `users`, `books`, `events`
-3. **Realtime listeners**: Auto-sync when data changes on any device
-4. **All CRUD operations** now use Firebase instead of localStorage
-5. **Language preference** still uses localStorage (device-specific)
-
-**Next step:**
-
-Deploy and test. Your data will now sync between desktop and mobile!
-
-If you get permission errors, go to Firebase Console → Firestore → Rules and set:
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
+loadUsers();
+loadBooks();
+loadEvents();
+updateUserLabel();
+updateClock();
+refreshStats();
+renderBookStrip();
+updateUILabels();
