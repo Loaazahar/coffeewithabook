@@ -2,18 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <title>Coffee with a Book</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Coffee With A Book</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
   <div class="dashboard">
 
     <!-- LEFT PANEL -->
-    <div class="panel panel-left">
-      <div class="top-bar">
-        <div id="titleLabel">COFFEE WITH A BOOK</div>
+    <aside class="panel panel-left">
+      <div class="panel-header">
+        <span id="titleLabel">COFFEE WITH A BOOK</span>
         <div id="langButtons">
           <button class="langBtn" data-lang="en">EN</button>
           <button class="langBtn" data-lang="ko">한국어</button>
@@ -22,12 +24,12 @@
       </div>
 
       <div class="time-block">
-        <div id="clock" class="time">00:00:00</div>
-        <div id="date" class="date">---</div>
+        <div class="time" id="clock">00:00:00</div>
+        <div class="date" id="date">YYYY-MM-DD</div>
       </div>
 
       <div class="stats-block">
-        <div id="statLabel" class="stats-title">SESSION / STATS</div>
+        <div class="stats-title" id="statLabel">SESSION / STATS</div>
         <div class="stats-grid">
           <div class="stat-row"><span id="lblBooks">Books</span><span id="stat-books">0</span></div>
           <div class="stat-row"><span id="lblProgress">In Progress</span><span id="stat-progress">0</span></div>
@@ -37,60 +39,91 @@
       </div>
 
       <div class="session-block">
-        <div id="sessionTitle" class="stats-title">SESSION INFO</div>
-        <div id="sessionInfo" class="session-lines"></div>
+        <div class="stats-title" id="sessionTitle">SESSION INFO</div>
+        <div class="session-lines" id="sessionInfo">
+          user: guest<br/>
+          role: guest<br/>
+          access: read-only<br/>
+          cmd: type <span class="accent">help</span>
+        </div>
       </div>
 
+      <!-- WEATHER + EXTRA INFO -->
       <div class="weather-block">
-        <div id="weatherTitle" class="stats-title">WEATHER</div>
-        <div id="weatherData" class="weather-text">Loading...</div>
+        <div class="stats-title" id="weatherTitle">WEATHER</div>
+        <div class="weather-text" id="weatherData">
+          Loading Daegu weather…
+        </div>
       </div>
+    </aside>
 
-      <div class="readers-block">
-        <div class="stats-title">CURRENT READERS</div>
-        <div id="currentReaders" class="session-lines">---</div>
-      </div>
+    <!-- CENTER: FEED + SHELL -->
+    <main class="terminal-area">
 
-      <div class="quote-block">
-        <div class="stats-title">QUOTE</div>
-        <div id="quoteText" class="session-lines">---</div>
-      </div>
+      <!-- UPPER: GLOBAL READING FEED -->
+      <section class="feed-block">
+        <div class="terminal-header">
+          <span id="feedTitleLabel">GLOBAL READING FEED</span>
+        </div>
+        <div class="feed-output" id="feedOutput">
+          <div class="line">No activity yet.</div>
+        </div>
+      </section>
 
-      <div class="vocab-block">
-        <div class="stats-title">VOCAB</div>
-        <div id="vocabText" class="session-lines">---</div>
-      </div>
+      <!-- LOWER: SHELL -->
+      <section class="shell-block">
+        <div class="terminal-header">
+          <span id="shellLabel">MAIN SHELL</span>
+          <span id="userLabel">guest@coffee-console (guest)</span>
+        </div>
 
-      <div class="mood-block">
-        <div class="stats-title">MOOD</div>
-        <div id="moodText" class="session-lines">---</div>
-      </div>
-    </div>
+        <div class="terminal-output" id="terminalOutput">
+          <div class="line">Welcome to <span class="accent">Coffee with a Book</span> ☕📖</div>
+          <div class="line">Type <span class="accent">help</span> for available commands.</div>
+        </div>
 
-    <!-- CENTER TERMINAL -->
-    <div class="panel terminal-area">
-      <div id="shellLabel" class="terminal-header">MAIN SHELL</div>
-      <div id="terminalOutput" class="terminal-output"></div>
-      <div class="terminal-input-bar">
-        <span id="promptUser" class="prompt-label">guest@coffee-console (guest)</span>
-        <input id="terminalInput" type="text" autocomplete="off" />
-      </div>
-    </div>
+        <div class="terminal-input-bar">
+          <span class="prompt-label">></span>
+          <input id="terminalInput" type="text" autocomplete="off" autofocus />
+        </div>
+      </section>
+
+    </main>
 
     <!-- RIGHT PANEL -->
-    <div class="panel panel-right">
-      <div id="activityLabel" class="stats-title">ACTIVITY</div>
-      <div id="recentUpdate" class="recent-text">---</div>
-    </div>
+    <aside class="panel panel-right">
+      <div class="panel-header">
+        <span id="activityLabel">ACTIVITY</span>
+      </div>
 
-    <!-- FOOTER BOOKSHELF -->
-    <div class="footer-bar">
-      <div id="bookshelfLabel" class="footer-header">BOOKSHELF</div>
-      <div id="bookStrip" class="book-strip"></div>
-    </div>
+      <div class="graph-block">
+        <div class="stats-title" id="streakLabel">READING STREAK</div>
+        <div class="fake-graph">
+          <div class="graph-line"></div>
+          <div class="graph-line"></div>
+          <div class="graph-line"></div>
+        </div>
+        <div class="recent-text" id="streakText">
+          No streak yet.
+        </div>
+      </div>
+
+      <div class="recent-block">
+        <div class="stats-title" id="lastUpdateLabel">RECENT ACTIVITY</div>
+        <div class="recent-text" id="recentUpdate">
+          No activity yet.
+        </div>
+      </div>
+    </aside>
+
+    <!-- BOTTOM BOOK STRIP -->
+    <footer class="footer-bar">
+      <div class="footer-header" id="bookshelfLabel">BOOKSHELF</div>
+      <div class="book-strip" id="bookStrip"></div>
+    </footer>
+
   </div>
 
   <script src="app.js"></script>
 </body>
 </html>
-
