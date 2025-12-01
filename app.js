@@ -1,52 +1,40 @@
-// =============================
-//  STORAGE KEYS & GLOBAL STATE
-// =============================
-const STORAGE_KEY_LANG   = "coffee_console_lang";
-const STORAGE_KEY_USERS  = "coffee_console_users_v1";
-const STORAGE_KEY_BOOKS  = "coffee_console_books_v1";
-const STORAGE_KEY_EVENTS = "coffee_console_events_v1";
+// ====== STORAGE KEYS / STATE ======
+const STORAGE_KEY_LANG   = "coffee_lang";
+const STORAGE_KEY_USERS  = "coffee_users";
+const STORAGE_KEY_BOOKS  = "coffee_books";
+const STORAGE_KEY_EVENTS = "coffee_events";
 
 const DEFAULT_ADMIN = "loaa";
 
-let language    = localStorage.getItem(STORAGE_KEY_LANG) || "en"; // "en" | "ko" | "ja"
+let language    = localStorage.getItem(STORAGE_KEY_LANG) || "en";
 let currentUser = "guest";
-let currentRole = "guest";  // "guest" | "admin" | "member"
+let currentRole = "guest"; // guest | admin | member
 
-let users  = {};   // username -> { role, pass, active, createdAt }
-let books  = [];   // { id, owner, title, author, totalPages, pagesRead, comments, lastUpdate }
-let events = [];   // log of actions
+let users  = {};
+let books  = [];
+let events = [];
 
-// =============================
-//  DOM REFERENCES
-// =============================
-const langButtonsEl   = document.getElementById("langButtons");
-const clockEl         = document.getElementById("clock");
-const dateEl          = document.getElementById("date");
+// ====== DOM ======
+const clockEl        = document.getElementById("clock");
+const dateEl         = document.getElementById("date");
+const statBooksEl    = document.getElementById("stat-books");
+const statProgressEl = document.getElementById("stat-progress");
+const statFinishedEl = document.getElementById("stat-finished");
+const statPagesEl    = document.getElementById("stat-pages");
+const sessionInfoEl  = document.getElementById("sessionInfo");
+const weatherDataEl  = document.getElementById("weatherData");
+const currentReadersEl = document.getElementById("currentReaders");
+const quoteTextEl    = document.getElementById("quoteText");
+const vocabTextEl    = document.getElementById("vocabText");
+const moodTextEl     = document.getElementById("moodText");
+const fireplaceEl    = document.getElementById("fireplace");
+const terminalOutput = document.getElementById("terminalOutput");
+const terminalInput  = document.getElementById("terminalInput");
+const promptUserEl   = document.getElementById("promptUser");
+const recentUpdateEl = document.getElementById("recentUpdate");
+const bookStripEl    = document.getElementById("bookStrip");
 
-const statBooksEl     = document.getElementById("stat-books");
-const statProgressEl  = document.getElementById("stat-progress");
-const statFinishedEl  = document.getElementById("stat-finished");
-const statPagesEl     = document.getElementById("stat-pages");
-
-const sessionInfoEl   = document.getElementById("sessionInfo");
-
-const weatherDataEl   = document.getElementById("weatherData");
-const readerListEl    = document.getElementById("readerList");
-const quoteTextEl     = document.getElementById("quoteText");
-const vocabTextEl     = document.getElementById("vocabText");
-const moodTextEl      = document.getElementById("moodText");
-const fireplaceEl     = document.getElementById("fireplace");
-
-const liveFeedEl      = document.getElementById("liveFeed");
-const terminalOutput  = document.getElementById("terminalOutput");
-const terminalInput   = document.getElementById("terminalInput");
-
-const recentUpdateEl  = document.getElementById("recentUpdate");
-const bookStripEl     = document.getElementById("bookStrip");
-
-// =============================
-//  BASIC UTILITIES
-// =============================
+// ====== UTIL ======
 function addLine(text, cls) {
   const div = document.createElement("div");
   div.className = "line" + (cls ? " " + cls : "");
@@ -55,68 +43,17 @@ function addLine(text, cls) {
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
 }
 
-function saveUsers() {
-  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+function save(storeKey, value) {
+  localStorage.setItem(storeKey, JSON.stringify(value));
 }
 
-function saveBooks() {
-  localStorage.setItem(STORAGE_KEY_BOOKS, JSON.stringify(books));
-}
-
-function saveEvents() {
-  localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
-}
-
-function loadUsers() {
-  const saved = localStorage.getItem(STORAGE_KEY_USERS);
-  if (saved) {
-    try {
-      users = JSON.parse(saved);
-    } catch {
-      users = {};
-    }
-  } else {
-    users = {};
-  }
-  if (!users[DEFAULT_ADMIN]) {
-    users[DEFAULT_ADMIN] = {
-      role: "admin",
-      pass: "books!2026",
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    saveUsers();
-  }
-}
-
-function loadBooks() {
-  const saved = localStorage.getItem(STORAGE_KEY_BOOKS);
-  if (saved) {
-    try {
-      books = JSON.parse(saved);
-    } catch {
-      books = [];
-    }
-  } else {
-    books = [];
-  }
-  books.forEach((b) => {
-    if (!b.owner) b.owner = DEFAULT_ADMIN;
-    if (!b.comments) b.comments = [];
-    if (!b.lastUpdate) b.lastUpdate = new Date().toISOString();
-  });
-}
-
-function loadEvents() {
-  const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
-  if (saved) {
-    try {
-      events = JSON.parse(saved);
-    } catch {
-      events = [];
-    }
-  } else {
-    events = [];
+function load(storeKey, fallback) {
+  const s = localStorage.getItem(storeKey);
+  if (!s) return fallback;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return fallback;
   }
 }
 
@@ -125,15 +62,41 @@ function formatPercent(book) {
   return Math.round((book.pagesRead / book.totalPages) * 100);
 }
 
-// =============================
-//  CLOCK & DATE
-// =============================
+function updatePromptLabel() {
+  promptUserEl.textContent = `${currentUser}@coffee-console (${currentRole})`;
+}
+
+// ====== LOAD DATA ======
+function initState() {
+  users  = load(STORAGE_KEY_USERS, {});
+  books  = load(STORAGE_KEY_BOOKS, []);
+  events = load(STORAGE_KEY_EVENTS, []);
+
+  if (!users[DEFAULT_ADMIN]) {
+    users[DEFAULT_ADMIN] = {
+      role: "admin",
+      pass: "books!2026",
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+    save(STORAGE_KEY_USERS, users);
+  }
+
+  // normalize books
+  books.forEach((b) => {
+    if (!b.owner) b.owner = DEFAULT_ADMIN;
+    if (!b.comments) b.comments = [];
+    if (!b.lastUpdate) b.lastUpdate = new Date().toISOString();
+  });
+}
+
+// ====== CLOCK ======
 function updateClock() {
   const now = new Date();
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  clockEl.textContent = `${hh}:${mm}:${ss}`;
+  const h = String(now.getHours()).padStart(2, "0");
+  const m = String(now.getMinutes()).padStart(2, "0");
+  const s = String(now.getSeconds()).padStart(2, "0");
+  clockEl.textContent = `${h}:${m}:${s}`;
 
   if (language === "ko") {
     dateEl.textContent = now.toLocaleDateString("ko-KR", {
@@ -160,12 +123,9 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
-// =============================
-//  LANGUAGE / LABELS
-// =============================
+// ====== LABELS / LANGUAGE ======
 function updateSessionInfo() {
   const access = currentRole === "guest" ? "read-only" : "read/write";
-
   if (language === "ko") {
     sessionInfoEl.innerHTML =
       `user: ${currentUser}<br>` +
@@ -188,11 +148,6 @@ function updateSessionInfo() {
 }
 
 function updateUILabels() {
-  // highlight active language button
-  document.querySelectorAll(".langBtn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.lang === language);
-  });
-
   const t = (id, en, ko, ja) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -202,14 +157,18 @@ function updateUILabels() {
   t("titleLabel", "COFFEE WITH A BOOK", "책과 커피", "本とコーヒー");
   t("statLabel", "SESSION / STATS", "세션 / 통계", "セッション / 統計");
   t("sessionTitle", "SESSION INFO", "세션 정보", "セッション情報");
-  t("bookshelfLabel", "BOOKSHELF", "책 목록", "本棚");
   t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
+  t("bookshelfLabel", "BOOKSHELF", "책 목록", "本棚");
   t("activityLabel", "ACTIVITY", "활동", "アクティビティ");
   t("weatherTitle", "WEATHER", "날씨", "天気");
   t("lblBooks", "Books", "책 수", "冊数");
-  t("lblFinished", "Finished", "다 읽음", "読了");
   t("lblProgress", "In Progress", "진행중", "進行中");
+  t("lblFinished", "Finished", "다 읽음", "読了");
   t("lblPages", "Pages Read", "읽은 페이지", "読んだページ数");
+
+  document.querySelectorAll(".langBtn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === language);
+  });
 
   updateSessionInfo();
   updateClock();
@@ -217,7 +176,6 @@ function updateUILabels() {
   renderBookStrip();
   refreshReaders();
   renderQuoteAndVocab();
-  renderFeed();
   updateActivityBox();
   fetchWeather();
 
@@ -231,9 +189,7 @@ document.querySelectorAll(".langBtn").forEach((btn) => {
   });
 });
 
-// =============================
-//  STATS & BOOK STRIP
-// =============================
+// ====== STATS / BOOKSTRIP ======
 function refreshStats() {
   const totalBooks = books.length;
   const finished = books.filter(
@@ -246,7 +202,7 @@ function refreshStats() {
       b.pagesRead < b.totalPages
   ).length;
   const pagesRead = books.reduce(
-    (sum, b) => sum + (b.pagesRead || 0),
+    (s, b) => s + (b.pagesRead || 0),
     0
   );
 
@@ -272,9 +228,7 @@ function renderBookStrip() {
   });
 }
 
-// =============================
-//  READERS / QUOTE / VOCAB / MOOD
-// =============================
+// ====== READERS / QUOTE / VOCAB / MOOD ======
 function refreshReaders() {
   const perUser = {};
   books.forEach((b) => {
@@ -285,7 +239,7 @@ function refreshReaders() {
 
   const names = Object.keys(perUser);
   if (!names.length) {
-    readerListEl.textContent =
+    currentReadersEl.textContent =
       language === "ko"
         ? "아직 읽는 사람이 없습니다."
         : language === "ja"
@@ -294,10 +248,8 @@ function refreshReaders() {
     return;
   }
 
-  const lines = names
-    .sort()
-    .map((name) => `${name} → ${perUser[name]}p`);
-  readerListEl.innerHTML = lines.join("<br>");
+  const lines = names.sort().map((name) => `${name} → ${perUser[name]}p`);
+  currentReadersEl.innerHTML = lines.join("<br>");
 }
 
 function renderQuoteAndVocab() {
@@ -325,31 +277,23 @@ function setMoodTextFromCode(code) {
       break;
     case 2:
       mood = {
-        en: "⛅ Soft sky reading — a calm atmosphere for stories",
-        ko: "⛅ 잔잔한 하늘 독서 — 이야기 듣기 좋은 날씨",
-        ja: "⛅ 雲間読書 — 静かな読書時間",
+        en: "⛅ Soft sky reading — calm air for quiet stories",
+        ko: "⛅ 잔잔한 하늘 독서 — 조용히 읽기 좋은 날",
+        ja: "⛅ 穏やかな空の読書 — 静かな物語にぴったり",
       };
       break;
     case 3:
       mood = {
         en: "☁️ Grey day reading — perfect for introspection",
-        ko: "☁️ 차분한 흐림 독서 — 생각이 깊어지는 시간",
-        ja: "☁️ 曇り読書 — 静かに読み込む雰囲気",
-      };
-      break;
-    case 45:
-    case 48:
-      mood = {
-        en: "🌫 Misty reading — imagination moves softly",
-        ko: "🌫 안개 독서 — 상상이 천천히 흘러가요",
-        ja: "🌫 霧の読書 — 思考がふわっと広がる",
+        ko: "☁️ 흐린 날 독서 — 생각이 깊어지는 시간",
+        ja: "☁️ 曇りの日の読書 — 物思いにふける時間",
       };
       break;
     case 61:
     case 80:
       mood = {
-        en: "🌧 Rainy reading — the raindrops are our background music",
-        ko: "🌧 빗소리 독서 — 자연의 ASMR",
+        en: "🌧 Rainy reading — raindrops as background music",
+        ko: "🌧 빗소리 독서 — 자연이 들려주는 BGM",
         ja: "🌧 雨音読書 — 雨がBGMになる",
       };
       break;
@@ -358,13 +302,6 @@ function setMoodTextFromCode(code) {
         en: "❄️ Snowy reading — pages feel warmer in your hands",
         ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
         ja: "❄️ 雪の読書 — 本が手の中で温かい",
-      };
-      break;
-    case 95:
-      mood = {
-        en: "⚡ Stormy reading — dramatic weather suits dramatic stories",
-        ko: "⚡ 폭우 독서 — 감정이 더 짙어지는 시간",
-        ja: "⚡ 雷雨読書 — 雰囲気が物語を深める",
       };
       break;
     default:
@@ -379,25 +316,20 @@ function setMoodTextFromCode(code) {
   moodTextEl.textContent = txt;
 }
 
-// =============================
-//  FIREPLACE ANIMATION 🔥
-// =============================
+// FIREPLACE animation – always on
 const fireplaceFrames = [
   "    (  🔥  )\n   ( 🔥🔥 )\n    (  🔥  )",
   "    ( 🔥 )\n   (🔥🔥🔥)\n    ( 🔥 )",
   "     🔥  \n   (🔥🔥🔥)\n    🔥🔥 "
 ];
 let fireplaceIndex = 0;
-
 setInterval(() => {
   if (!fireplaceEl) return;
   fireplaceEl.textContent = fireplaceFrames[fireplaceIndex];
   fireplaceIndex = (fireplaceIndex + 1) % fireplaceFrames.length;
 }, 900);
 
-// =============================
-//  WEATHER (DAEGU)
-// =============================
+// ====== WEATHER (DAEGU) ======
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
 
@@ -417,13 +349,12 @@ function weatherCodeToText(code) {
     1: { en: "Mostly clear", ko: "대체로 맑음", ja: "おおむね晴れ" },
     2: { en: "Partly cloudy", ko: "구름 조금", ja: "一部曇り" },
     3: { en: "Overcast", ko: "흐림", ja: "曇り" },
-    45:{ en: "Fog", ko: "안개", ja: "霧" },
-    48:{ en: "Foggy", ko: "짙은 안개", ja: "濃い霧" },
-    51:{ en: "Drizzle", ko: "이슬비", ja: "霧雨" },
-    61:{ en: "Rain", ko: "비", ja: "雨" },
-    71:{ en: "Snow", ko: "눈", ja: "雪" },
-    80:{ en: "Rain showers", ko: "소나기", ja: "にわか雨" },
-    95:{ en: "Thunderstorm", ko: "뇌우", ja: "雷雨" },
+    45: { en: "Fog", ko: "안개", ja: "霧" },
+    48: { en: "Foggy", ko: "짙은 안개", ja: "濃い霧" },
+    61: { en: "Rain", ko: "비", ja: "雨" },
+    71: { en: "Snow", ko: "눈", ja: "雪" },
+    80: { en: "Rain showers", ko: "소나기", ja: "にわか雨" },
+    95: { en: "Thunderstorm", ko: "뇌우", ja: "雷雨" },
   };
   const info = base[code] || { en: "Unknown", ko: "알 수 없음", ja: "不明" };
   return language === "ko" ? info.ko : language === "ja" ? info.ja : info.en;
@@ -453,7 +384,7 @@ async function fetchWeather() {
     }
 
     const cw    = data.current_weather;
-    const temp  = Math.ceil(cw.temperature);
+    const temp  = Math.round(cw.temperature);
     const wCode = cw.weathercode;
 
     // humidity
@@ -495,19 +426,16 @@ async function fetchWeather() {
     lines.push("");
     lines.push(nextTitle);
 
-    // next 3 days (ceil temps)
     for (let i = 1; i <= 3 && i < dTimes.length; i++) {
       const dDate = new Date(dTimes[i]);
       const wd    = getWeekdayName(dDate.getDay());
-      const max   = Math.ceil(dMax[i]);
-      const min   = Math.ceil(dMin[i]);
+      const max   = Math.round(dMax[i]);
+      const min   = Math.round(dMin[i]);
       const cTxt  = weatherCodeToText(dCodes[i]);
       lines.push(`${wd}: ${max}° / ${min}°  ${cTxt}`);
     }
 
     weatherDataEl.innerHTML = lines.join("<br>");
-
-    // mood according to weather
     setMoodTextFromCode(wCode);
   } catch (e) {
     console.error(e);
@@ -520,66 +448,12 @@ async function fetchWeather() {
   }
 }
 
-// =============================
-//  EVENTS / FEED / ACTIVITY
-// =============================
+// ====== EVENTS / ACTIVITY ======
 function logEvent(ev) {
   ev.timestamp = ev.timestamp || new Date().toISOString();
   events.push(ev);
-  saveEvents();
-  renderFeed();
+  save(STORAGE_KEY_EVENTS, events);
   updateActivityBox();
-}
-
-function renderFeed() {
-  liveFeedEl.innerHTML = "";
-  if (!events.length) {
-    liveFeedEl.textContent =
-      language === "ko"
-        ? "아직 활동이 없습니다."
-        : language === "ja"
-        ? "まだ活動はありません。"
-        : "No activity yet.";
-    return;
-  }
-
-  const recent = events
-    .slice()
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 10);
-
-  recent.forEach((ev) => {
-    const div = document.createElement("div");
-    const time = new Date(ev.timestamp).toLocaleString(
-      language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US",
-      { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
-    );
-    const user = ev.user || ev.ownerUser || "unknown";
-    let line = "";
-
-    if (ev.type === "book_add") {
-      line = `+ ${user} added "${ev.bookTitle}"`;
-    } else if (ev.type === "progress") {
-      line = `⬆ ${user}: "${ev.bookTitle}" ${ev.fromPages}→${ev.toPages} (+${ev.deltaPages})`;
-    } else if (ev.type === "comment") {
-      line = `💬 ${user} on "${ev.bookTitle}": "${ev.commentText}"`;
-    } else if (ev.type === "book_remove") {
-      line = `− ${user} removed "${ev.bookTitle}"`;
-    } else if (ev.type === "user_add") {
-      line = `👥 ${user} created user "${ev.targetUser}"`;
-    } else if (ev.type === "user_remove") {
-      line = `👥 ${user} removed user "${ev.targetUser}"`;
-    } else if (ev.type === "password_self") {
-      line = `🔑 ${user} updated their password`;
-    } else if (ev.type === "password_admin") {
-      line = `🔑 ${user} reset password for "${ev.targetUser}"`;
-    } else {
-      line = `${user} did ${ev.type}`;
-    }
-
-    div.innerHTML = `${line}<br><span class="accent-amber">${time}</span>`;
-    liveFeedEl.appendChild(div);
-  });
 }
 
 function updateActivityBox() {
@@ -592,84 +466,5 @@ function updateActivityBox() {
         : "No recent activity.";
     return;
   }
-  const last = events.slice().sort(
-    (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-  )[0];
-
-  const user = last.user || last.ownerUser || "unknown";
-  let text = "";
-  if (last.type === "book_add") {
-    text = `${user} added "${last.bookTitle}"`;
-  } else if (last.type === "progress") {
-    text = `${user} updated "${last.bookTitle}" to ${last.toPages}p`;
-  } else if (last.type === "comment") {
-    text = `${user} commented on "${last.bookTitle}"`;
-  } else if (last.type === "user_add") {
-    text = `${user} created user "${last.targetUser}"`;
-  } else if (last.type === "user_remove") {
-    text = `${user} removed user "${last.targetUser}"`;
-  } else if (last.type === "book_remove") {
-    text = `${user} removed "${last.bookTitle}"`;
-  } else if (last.type === "password_self") {
-    text = `${user} changed their password`;
-  } else if (last.type === "password_admin") {
-    text = `${user} set password for "${last.targetUser}"`;
-  } else {
-    text = `${user} did ${last.type}`;
-  }
-  recentUpdateEl.textContent = text;
-}
-
-// =============================
-//  PERMISSIONS
-// =============================
-function requireAdmin() {
-  if (currentRole !== "admin") {
-    addLine("Admin only.", "error");
-    return false;
-  }
-  return true;
-}
-
-function canEditBook(book) {
-  return currentRole === "admin" || book.owner === currentUser;
-}
-
-// =============================
-//  COMMANDS
-// =============================
-function cmd_help() {
-  addLine("Commands:", "success");
-  addLine("  help                   – show this help");
-  addLine("  list [user]            – list books (all or by user)");
-  addLine("  view <id>              – view one book");
-  addLine("  weather                – refresh Daegu weather");
-  addLine("  lang en|ko|ja          – change UI language");
-  addLine("  login                  – login as user");
-  addLine("  logout                 – logout to guest");
-  addLine("  changepass             – change your password");
-  addLine("Admin:", "success");
-  addLine("  createuser <name>      – create member");
-  addLine("  removeuser <name>      – remove user");
-  addLine("  listusers              – list users");
-  addLine("  setpass <username>     – set password for a user");
-  addLine("  add                    – add new book");
-  addLine("  edit <id>              – edit book meta");
-  addLine("  update <id> <page>     – update pages read");
-  addLine("  comment <id> <text>    – add comment");
-  addLine("  remove <id>            – remove book");
-}
-
-function cmd_list(args) {
-  let list = books;
-  if (args[0]) {
-    const u = args[0];
-    list = books.filter((b) => b.owner === u);
-    if (!list.length) {
-      addLine("No books for user " + u, "error");
-      return;
-    }
-  }
-  if (!list.length) {
-    addLine("No books.", "error");
-    return;
+  const last = events
+    .slice()
