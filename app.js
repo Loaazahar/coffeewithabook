@@ -1339,11 +1339,7 @@ inputEl.addEventListener("keydown", (e) => {
 
 // ---------- INIT ----------
 async function init() {
-  addLine("Connecting to cloud database...", "success");
-  
   try {
-    await migrateToFirebase();
-    
     await loadUsersFromFirebase();
     
     if (!users[DEFAULT_ADMIN]) {
@@ -1365,12 +1361,8 @@ async function init() {
     refreshStats();
     renderBookStrip();
     updateUILabels();
-    
-    addLine("Connected! Data syncs across all devices.", "success");
   } catch (e) {
     console.error("Init error:", e);
-    addLine("Connection error: " + e.message, "error");
-    addLine("Check console for details.", "error");
   }
 }
 
