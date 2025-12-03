@@ -424,6 +424,9 @@ function updateUILabels() {
   renderFeed();
   updateActivitySidebar();
   updateStreak();
+  renderCurrentReaders();
+  renderQuote();
+  renderVocab();
   fetchWeather();
 
   localStorage.setItem(STORAGE_KEY_LANG, language);
