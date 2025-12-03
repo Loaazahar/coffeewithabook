@@ -36,7 +36,8 @@ const statFinishedEl = document.getElementById("stat-finished");
 const statPagesEl = document.getElementById("stat-pages");
 const recentUpdateEl = document.getElementById("recentUpdate");
 const sessionInfoEl = document.getElementById("sessionInfo");
-const weatherDataEl = document.getElementById("weatherData");
+const weatherDataDaeguEl = document.getElementById("weatherDataDaegu");
+const weatherDataKansaiEl = document.getElementById("weatherDataKansai");
 const feedOutputEl = document.getElementById("feedOutput");
 const streakTextEl = document.getElementById("streakText");
 
@@ -404,7 +405,8 @@ function updateUILabels() {
   t("shellLabel", "MAIN SHELL", "메인 셸", "メインシェル");
   t("streakLabel", "READING STREAK", "읽기 기록", "読書記録");
   t("lastUpdateLabel", "RECENT ACTIVITY", "최근 활동", "最近のアクティビティ");
-  t("weatherTitle", "WEATHER", "날씨", "天気");
+  t("weatherTitleDaegu", "DAEGU WEATHER", "대구 날씨", "大邱の天気");
+  t("weatherTitleKansai", "KANSAI WEATHER", "간사이 날씨", "関西の天気");
   t("lblBooks", "Books", "책 수", "冊数");
   t("lblFinished", "Finished", "다 읽음", "読了");
   t("lblProgress", "In Progress", "진행중", "進行中");
@@ -562,7 +564,7 @@ function renderFeed() {
 
 function updateActivitySidebar() {
   if (!events.length) {
-    recentUpdateEl.textContent =
+    recentUpdateEl.innerHTML =
       language === "ko"
         ? "활동이 없습니다."
         : language === "ja"
@@ -570,32 +572,64 @@ function updateActivitySidebar() {
         : "No activity yet.";
     return;
   }
-  const latest = events[0];
 
-  let text = "";
-  const user = latest.user || latest.ownerUser || "unknown";
+  const grouped = {};
+  
+  events.slice(0, 50).forEach((ev) => {
+    const evDate = new Date(ev.timestamp);
+    const dayKey = evDate.toISOString().slice(0, 10);
+    if (!grouped[dayKey]) grouped[dayKey] = [];
+    grouped[dayKey].push(ev);
+  });
 
-  if (latest.type === "book_add") {
-    text = `${user} added "${latest.bookTitle}"`;
-  } else if (latest.type === "progress") {
-    text = `${user} updated "${latest.bookTitle}" ${latest.fromPages}→${latest.toPages}`;
-  } else if (latest.type === "comment") {
-    text = `${user} commented on "${latest.bookTitle}"`;
-  } else if (latest.type === "user_add") {
-    text = `${user} created user "${latest.targetUser}"`;
-  } else if (latest.type === "user_remove") {
-    text = `${user} removed user "${latest.targetUser}"`;
-  } else if (latest.type === "book_remove") {
-    text = `${user} removed book "${latest.bookTitle}"`;
-  } else if (latest.type === "password_self") {
-    text = `${user} updated their password`;
-  } else if (latest.type === "password_admin") {
-    text = `${user} reset password for "${latest.targetUser}"`;
-  } else {
-    text = `${user} did ${latest.type}`;
-  }
+  const sortedDays = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
-  recentUpdateEl.textContent = text;
+  const lines = [];
+
+  sortedDays.slice(0, 7).forEach((dayKey) => {
+    const dayDate = new Date(dayKey + "T00:00:00");
+    const dayLabel = dayDate.toLocaleDateString(
+      language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US",
+      { month: "short", day: "numeric", weekday: "short" }
+    );
+    
+    lines.push(`<div class="activity-day-header">${dayLabel}</div>`);
+
+    grouped[dayKey].slice(0, 5).forEach((ev) => {
+      const user = ev.user || ev.ownerUser || "unknown";
+      let text = "";
+
+      if (ev.type === "book_add") {
+        text = `${user} added "${ev.bookTitle}"`;
+      } else if (ev.type === "progress") {
+        text = `${user}: "${ev.bookTitle}" ${ev.fromPages}→${ev.toPages}`;
+      } else if (ev.type === "comment") {
+        text = `${user} commented on "${ev.bookTitle}"`;
+      } else if (ev.type === "user_add") {
+        text = `${user} created "${ev.targetUser}"`;
+      } else if (ev.type === "user_remove") {
+        text = `${user} removed "${ev.targetUser}"`;
+      } else if (ev.type === "book_remove") {
+        text = `${user} removed "${ev.bookTitle}"`;
+      } else if (ev.type === "password_self") {
+        text = `${user} updated password`;
+      } else if (ev.type === "password_admin") {
+        text = `${user} reset pw for "${ev.targetUser}"`;
+      } else {
+        text = `${user}: ${ev.type}`;
+      }
+
+      const time = new Date(ev.timestamp);
+      const timeStr = time.toLocaleTimeString(
+        language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US",
+        { hour: "2-digit", minute: "2-digit" }
+      );
+
+      lines.push(`<div class="activity-item"><span class="activity-time">${timeStr}</span> ${text}</div>`);
+    });
+  });
+
+  recentUpdateEl.innerHTML = lines.join("");
 }
 
 // ---------- STREAK ----------
@@ -675,9 +709,203 @@ function formatDateShort(date) {
   }
 }
 
-// ---------- WEATHER (DAEGU) ----------
+// ---------- WEATHER COORDINATES ----------
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
+
+const KANSAI_LAT = 34.6937;
+const KANSAI_LON = 135.5023;
+
+// ---------- QUOTES POOL ----------
+const QUOTES_POOL = [
+  {
+    en: "A reader lives a thousand lives before he dies.",
+    ko: "독서가는 죽기 전에 천 개의 삶을 산다.",
+    ja: "読書家は死ぬ前に千の人生を生きる。",
+    author: "George R.R. Martin"
+  },
+  {
+    en: "Books are a uniquely portable magic.",
+    ko: "책은 휴대할 수 있는 유일한 마법이다.",
+    ja: "本は持ち運べる唯一の魔法だ。",
+    author: "Stephen King"
+  },
+  {
+    en: "There is no friend as loyal as a book.",
+    ko: "책만큼 충실한 친구는 없다.",
+    ja: "本ほど忠実な友はいない。",
+    author: "Ernest Hemingway"
+  },
+  {
+    en: "Reading is dreaming with open eyes.",
+    ko: "독서는 눈을 뜨고 꾸는 꿈이다.",
+    ja: "読書は目を開けて見る夢だ。",
+    author: "Anissa Trisdianty"
+  },
+  {
+    en: "A book is a dream you hold in your hands.",
+    ko: "책은 손에 쥔 꿈이다.",
+    ja: "本は手に持つ夢だ。",
+    author: "Neil Gaiman"
+  },
+  {
+    en: "One must always be careful of books.",
+    ko: "책은 항상 조심해야 한다.",
+    ja: "本には常に気をつけなければならない。",
+    author: "Cassandra Clare"
+  },
+  {
+    en: "Books are mirrors: you only see in them what you already have inside you.",
+    ko: "책은 거울이다: 이미 내 안에 있는 것만 보인다.",
+    ja: "本は鏡だ：自分の中にあるものだけが見える。",
+    author: "Carlos Ruiz Zafón"
+  },
+  {
+    en: "We read to know we are not alone.",
+    ko: "우리는 혼자가 아님을 알기 위해 읽는다.",
+    ja: "私たちは孤独でないことを知るために読む。",
+    author: "C.S. Lewis"
+  },
+  {
+    en: "The more that you read, the more things you will know.",
+    ko: "더 많이 읽을수록 더 많이 알게 된다.",
+    ja: "読めば読むほど、知ることが増える。",
+    author: "Dr. Seuss"
+  },
+  {
+    en: "Reading brings us unknown friends.",
+    ko: "독서는 우리에게 알지 못하는 친구를 데려다준다.",
+    ja: "読書は未知の友をもたらす。",
+    author: "Honoré de Balzac"
+  },
+  {
+    en: "A room without books is like a body without a soul.",
+    ko: "책이 없는 방은 영혼 없는 육체와 같다.",
+    ja: "本のない部屋は魂のない体のようだ。",
+    author: "Cicero"
+  },
+  {
+    en: "Books are the quietest and most constant of friends.",
+    ko: "책은 가장 조용하고 변함없는 친구다.",
+    ja: "本は最も静かで変わらない友だ。",
+    author: "Charles W. Eliot"
+  }
+];
+
+// ---------- VOCAB POOL ----------
+const VOCAB_POOL = [
+  {
+    word: { en: "Serendipity", ko: "세렌디피티", ja: "セレンディピティ" },
+    reading: { en: "", ko: "", ja: "" },
+    meaning: {
+      en: "Finding something good without looking for it",
+      ko: "뜻밖의 행운을 발견하는 것",
+      ja: "思いがけない幸運を見つけること"
+    }
+  },
+  {
+    word: { en: "Ephemeral", ko: "덧없는", ja: "儚い" },
+    reading: { en: "", ko: "", ja: "はかない" },
+    meaning: {
+      en: "Lasting for a very short time",
+      ko: "아주 짧은 시간 동안 지속되는",
+      ja: "ほんの短い間だけ続く"
+    }
+  },
+  {
+    word: { en: "Petrichor", ko: "페트리코", ja: "ペトリコール" },
+    reading: { en: "", ko: "", ja: "" },
+    meaning: {
+      en: "The smell of earth after rain",
+      ko: "비 온 뒤 흙냄새",
+      ja: "雨上がりの土の匂い"
+    }
+  },
+  {
+    word: { en: "Mellifluous", ko: "감미로운", ja: "甘美な" },
+    reading: { en: "", ko: "", ja: "かんびな" },
+    meaning: {
+      en: "Sweet-sounding, pleasant to hear",
+      ko: "달콤하게 들리는, 듣기 좋은",
+      ja: "甘く響く、聞いて心地よい"
+    }
+  },
+  {
+    word: { en: "Wanderlust", ko: "방랑벽", ja: "放浪癖" },
+    reading: { en: "", ko: "", ja: "ほうろうへき" },
+    meaning: {
+      en: "A strong desire to travel",
+      ko: "여행에 대한 강한 욕구",
+      ja: "旅への強い欲求"
+    }
+  },
+  {
+    word: { en: "Sonder", ko: "손더", ja: "ソンダー" },
+    reading: { en: "", ko: "", ja: "" },
+    meaning: {
+      en: "Realizing everyone has a life as vivid as your own",
+      ko: "모든 사람이 나만큼 생생한 삶을 산다는 깨달음",
+      ja: "誰もが自分と同じく鮮やかな人生を持つという気づき"
+    }
+  },
+  {
+    word: { en: "Komorebi", ko: "코모레비", ja: "木漏れ日" },
+    reading: { en: "", ko: "", ja: "こもれび" },
+    meaning: {
+      en: "Sunlight filtering through leaves",
+      ko: "나뭇잎 사이로 비치는 햇빛",
+      ja: "葉の間から差し込む日光"
+    }
+  },
+  {
+    word: { en: "Hygge", ko: "휘게", ja: "ヒュッゲ" },
+    reading: { en: "", ko: "", ja: "" },
+    meaning: {
+      en: "A cozy, contented mood",
+      ko: "아늑하고 만족스러운 기분",
+      ja: "居心地よく満ち足りた気分"
+    }
+  },
+  {
+    word: { en: "Tsundoku", ko: "쓴도쿠", ja: "積読" },
+    reading: { en: "", ko: "", ja: "つんどく" },
+    meaning: {
+      en: "Buying books and letting them pile up unread",
+      ko: "책을 사서 읽지 않고 쌓아두는 것",
+      ja: "本を買って読まずに積んでおくこと"
+    }
+  },
+  {
+    word: { en: "Wabi-sabi", ko: "와비사비", ja: "侘寂" },
+    reading: { en: "", ko: "", ja: "わびさび" },
+    meaning: {
+      en: "Finding beauty in imperfection",
+      ko: "불완전함에서 아름다움을 찾는 것",
+      ja: "不完全さの中に美を見出すこと"
+    }
+  },
+  {
+    word: { en: "Natsukashii", ko: "그리운", ja: "懐かしい" },
+    reading: { en: "", ko: "", ja: "なつかしい" },
+    meaning: {
+      en: "Nostalgic longing for the past",
+      ko: "과거에 대한 향수",
+      ja: "過去への懐かしさ"
+    }
+  },
+  {
+    word: { en: "Jeong", ko: "정", ja: "情" },
+    reading: { en: "", ko: "", ja: "じょう" },
+    meaning: {
+      en: "Deep emotional bond between people",
+      ko: "사람들 사이의 깊은 정서적 유대",
+      ja: "人々の間の深い情緒的な絆"
+    }
+  }
+];
+
+let currentQuoteIndex = Math.floor(Math.random() * QUOTES_POOL.length);
+let currentVocabIndex = Math.floor(Math.random() * VOCAB_POOL.length);
 
 function getWeekdayName(dayIndex) {
   if (language === "ko") {
@@ -722,23 +950,48 @@ function renderCurrentReaders() {
 }
 
 function renderQuote() {
+  const quote = QUOTES_POOL[currentQuoteIndex];
+  const quoteText = quote[language] || quote.en;
+  
+  const label = language === "ko" ? "명언" : language === "ja" ? "名言" : "QUOTE";
+  
   const lines = [
-    `<span class="accent-amber">QUOTE</span>`,
-    `"本は心の窓である"`,
-    `책은 마음의 창이다`,
-    `<i>Books are windows of the soul</i>`
+    `<span class="accent-amber">${label}</span>`,
+    `"${quoteText}"`,
+    `<i>— ${quote.author}</i>`
   ];
   quoteEl.innerHTML = lines.join("<br>");
 }
 
+function rotateQuote() {
+  currentQuoteIndex = (currentQuoteIndex + 1) % QUOTES_POOL.length;
+  renderQuote();
+}
+
 function renderVocab() {
-  const lines = [
-    `<span class="accent-amber">VOCAB</span>`,
-    `巡り合う（めぐりあう）`,
-    `우연히 만나다`,
-    `<i>to encounter by chance</i>`
-  ];
+  const vocab = VOCAB_POOL[currentVocabIndex];
+  const word = vocab.word[language] || vocab.word.en;
+  const reading = vocab.reading[language] || "";
+  const meaning = vocab.meaning[language] || vocab.meaning.en;
+  
+  const label = language === "ko" ? "어휘" : language === "ja" ? "語彙" : "VOCAB";
+  
+  const lines = [`<span class="accent-amber">${label}</span>`];
+  
+  if (reading) {
+    lines.push(`${word}（${reading}）`);
+  } else {
+    lines.push(word);
+  }
+  
+  lines.push(`<i>${meaning}</i>`);
+  
   vocabEl.innerHTML = lines.join("<br>");
+}
+
+function rotateVocab() {
+  currentVocabIndex = (currentVocabIndex + 1) % VOCAB_POOL.length;
+  renderVocab();
 }
 
 function renderMood(moodText) {
@@ -755,11 +1008,11 @@ function renderMood(moodText) {
   moodEl.innerHTML = lines.join("<br>");
 }
 
-async function fetchWeather() {
+async function fetchWeatherForCity(lat, lon, targetEl, cityName) {
   try {
     const url =
       `https://api.open-meteo.com/v1/forecast` +
-      `?latitude=${DAEGU_LAT}&longitude=${DAEGU_LON}` +
+      `?latitude=${lat}&longitude=${lon}` +
       `&current_weather=true` +
       `&hourly=relativehumidity_2m` +
       `&daily=temperature_2m_max,temperature_2m_min,weathercode` +
@@ -769,13 +1022,13 @@ async function fetchWeather() {
     const data = await res.json();
 
     if (!data.current_weather || !data.daily) {
-      weatherDataEl.textContent =
+      targetEl.textContent =
         language === "ko"
           ? "날씨 데이터를 불러올 수 없습니다."
           : language === "ja"
           ? "天気データを取得できません。"
           : "Unable to load weather data.";
-      return;
+      return null;
     }
 
     const cw = data.current_weather;
@@ -797,91 +1050,24 @@ async function fetchWeather() {
 
     const condText = weatherCodeToText(wCode);
 
-    let mood;
-    switch (wCode) {
-      case 0:
-      case 1:
-        mood = {
-          en: "☀️ Sunshine reading — pages feel lighter today",
-          ko: "☀️ 햇살 독서 — 마음도 환해지는 느낌",
-          ja: "☀️ 陽だまり読書 — 心がぽかぽか",
-        };
-        break;
-      case 2:
-        mood = {
-          en: "⛅ Soft sky reading — a calm atmosphere for stories",
-          ko: "⛅ 잔잔한 하늘 독서 — 이야기 듣기 좋은 날씨",
-          ja: "⛅ 雲間読書 — 静かな読書時間",
-        };
-        break;
-      case 3:
-        mood = {
-          en: "☁️ Grey day reading — perfect for introspection",
-          ko: "☁️ 차분한 흐림 독서 — 생각이 깊어지는 시간",
-          ja: "☁️ 曇り読書 — 静かに読み込む雰囲気",
-        };
-        break;
-      case 45:
-      case 48:
-        mood = {
-          en: "🌫 Misty reading — imagination moves softly",
-          ko: "🌫 안개 독서 — 상상이 천천히 흘러가요",
-          ja: "🌫 霧の読書 — 思考がふわっと広がる",
-        };
-        break;
-      case 61:
-      case 80:
-        mood = {
-          en: "🌧 Rainy reading — the raindrops are our background music",
-          ko: "🌧 빗소리 독서 — 자연의 ASMR",
-          ja: "🌧 雨音読書 — 雨がBGMになる",
-        };
-        break;
-      case 71:
-        mood = {
-          en: "❄️ Snowy reading — pages feel warmer in your hands",
-          ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
-          ja: "❄️ 雪の読書 — 本が手の中で温かい",
-        };
-        break;
-      case 95:
-        mood = {
-          en: "⚡ Stormy reading — dramatic weather suits dramatic stories",
-          ko: "⚡ 폭우 독서 — 감정이 더 짙어지는 시간",
-          ja: "⚡ 雷雨読書 — 雰囲気が物語を深める",
-        };
-        break;
-      default:
-        mood = {
-          en: "📖 Quiet reading time",
-          ko: "📖 조용한 독서 시간",
-          ja: "📖 静かな読書時間",
-        };
-    }
-    const moodText = language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
-
     const lines = [];
 
-    let headingLine, todayLine, humStr, nextTitle;
+    let todayLine, humStr, nextTitle;
 
     if (language === "ko") {
-      headingLine = "대구 날씨";
       todayLine = `오늘: ${temp}°C, ${condText}`;
       humStr = humidity != null ? `습도: ${humidity}%` : "";
       nextTitle = "3일 예보:";
     } else if (language === "ja") {
-      headingLine = "大邱の天気";
       todayLine = `今日: ${temp}°C, ${condText}`;
       humStr = humidity != null ? `湿度: ${humidity}%` : "";
       nextTitle = "3日間の予報:";
     } else {
-      headingLine = "DAEGU WEATHER";
       todayLine = `Today: ${temp}°C, ${condText}`;
       humStr = humidity != null ? `Humidity: ${humidity}%` : "";
       nextTitle = "Next 3 days:";
     }
 
-    lines.push(headingLine);
     lines.push(todayLine);
     if (humStr) lines.push(humStr);
     lines.push("");
@@ -896,19 +1082,98 @@ async function fetchWeather() {
       lines.push(`${wd}: ${max}° / ${min}°  ${dCond}`);
     }
 
-    weatherDataEl.innerHTML = lines.join("<br>");
-
-    renderCurrentReaders();
-    renderQuote();
-    renderVocab();
-    renderMood(moodText);
+    targetEl.innerHTML = lines.join("<br>");
+    
+    return wCode;
   } catch (e) {
-    weatherDataEl.textContent =
+    targetEl.textContent =
       language === "ko"
         ? "날씨 정보를 가져오는 중 오류 발생."
         : language === "ja"
         ? "天気情報の取得中にエラーが発生しました。"
         : "Error fetching weather.";
+    return null;
+  }
+}
+
+function getMoodFromWeatherCode(wCode) {
+  let mood;
+  switch (wCode) {
+    case 0:
+    case 1:
+      mood = {
+        en: "☀️ Sunshine reading — pages feel lighter today",
+        ko: "☀️ 햇살 독서 — 마음도 환해지는 느낌",
+        ja: "☀️ 陽だまり読書 — 心がぽかぽか",
+      };
+      break;
+    case 2:
+      mood = {
+        en: "⛅ Soft sky reading — a calm atmosphere for stories",
+        ko: "⛅ 잔잔한 하늘 독서 — 이야기 듣기 좋은 날씨",
+        ja: "⛅ 雲間読書 — 静かな読書時間",
+      };
+      break;
+    case 3:
+      mood = {
+        en: "☁️ Grey day reading — perfect for introspection",
+        ko: "☁️ 차분한 흐림 독서 — 생각이 깊어지는 시간",
+        ja: "☁️ 曇り読書 — 静かに読み込む雰囲気",
+      };
+      break;
+    case 45:
+    case 48:
+      mood = {
+        en: "🌫 Misty reading — imagination moves softly",
+        ko: "🌫 안개 독서 — 상상이 천천히 흘러가요",
+        ja: "🌫 霧の読書 — 思考がふわっと広がる",
+      };
+      break;
+    case 61:
+    case 80:
+      mood = {
+        en: "🌧 Rainy reading — the raindrops are our background music",
+        ko: "🌧 빗소리 독서 — 자연의 ASMR",
+        ja: "🌧 雨音読書 — 雨がBGMになる",
+      };
+      break;
+    case 71:
+      mood = {
+        en: "❄️ Snowy reading — pages feel warmer in your hands",
+        ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
+        ja: "❄️ 雪の読書 — 本が手の中で温かい",
+      };
+      break;
+    case 95:
+      mood = {
+        en: "⚡ Stormy reading — dramatic weather suits dramatic stories",
+        ko: "⚡ 폭우 독서 — 감정이 더 짙어지는 시간",
+        ja: "⚡ 雷雨読書 — 雰囲気が物語を深める",
+      };
+      break;
+    default:
+      mood = {
+        en: "📖 Quiet reading time",
+        ko: "📖 조용한 독서 시간",
+        ja: "📖 静かな読書時間",
+      };
+  }
+  return language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
+}
+
+async function fetchWeather() {
+  const daeguCode = await fetchWeatherForCity(DAEGU_LAT, DAEGU_LON, weatherDataDaeguEl, "Daegu");
+  await fetchWeatherForCity(KANSAI_LAT, KANSAI_LON, weatherDataKansaiEl, "Kansai");
+  
+  renderCurrentReaders();
+  renderQuote();
+  renderVocab();
+  
+  if (daeguCode !== null) {
+    const moodText = getMoodFromWeatherCode(daeguCode);
+    renderMood(moodText);
+  } else {
+    renderMood(null);
   }
 }
 
@@ -1447,3 +1712,6 @@ async function init() {
 }
 
 init();
+
+setInterval(rotateQuote, 30000);
+setInterval(rotateVocab, 45000);
