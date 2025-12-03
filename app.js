@@ -718,28 +718,24 @@ function populateStreakUserSelector() {
     if (b.owner) allUsers.add(b.owner);
   });
 
-  const currentOptions = Array.from(streakUserSelectEl.options).map(o => o.value);
-  const newUsers = ["all", ...Array.from(allUsers).sort()];
+  const previousValue = streakUserSelectEl.value;
+  streakUserSelectEl.innerHTML = "";
   
-  if (JSON.stringify(currentOptions) !== JSON.stringify(newUsers)) {
-    const previousValue = streakUserSelectEl.value;
-    streakUserSelectEl.innerHTML = "";
-    
-    const allOption = document.createElement("option");
-    allOption.value = "all";
-    allOption.textContent = language === "ko" ? "전체" : language === "ja" ? "全員" : "All Readers";
-    streakUserSelectEl.appendChild(allOption);
-    
-    allUsers.forEach((user) => {
-      const option = document.createElement("option");
-      option.value = user;
-      option.textContent = user;
-      streakUserSelectEl.appendChild(option);
-    });
-    
-    if (newUsers.includes(previousValue)) {
-      streakUserSelectEl.value = previousValue;
-    }
+  const allOption = document.createElement("option");
+  allOption.value = "all";
+  allOption.textContent = language === "ko" ? "전체" : language === "ja" ? "全員" : "All Readers";
+  streakUserSelectEl.appendChild(allOption);
+  
+  allUsers.forEach((user) => {
+    const option = document.createElement("option");
+    option.value = user;
+    option.textContent = user;
+    streakUserSelectEl.appendChild(option);
+  });
+  
+  const newUsers = ["all", ...Array.from(allUsers).sort()];
+  if (newUsers.includes(previousValue)) {
+    streakUserSelectEl.value = previousValue;
   }
 }
 
@@ -1044,7 +1040,8 @@ function renderCurrentReaders() {
     .map(b => `${b.owner} → ${b.pagesRead}p`);
 
   if (readers.length) {
-    const lines = [`<span class="accent-amber">📖 CURRENT READERS</span>`];
+    const label = language === "ko" ? "현재 독서 중" : language === "ja" ? "現在読書中" : "CURRENT READERS";
+    const lines = [`<span class="accent-amber">📖 ${label}</span>`];
     lines.push(...readers);
     currentReadersEl.innerHTML = lines.join("<br>");
   } else {
