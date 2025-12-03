@@ -280,6 +280,32 @@ body {
   line-height: 1.5;
 }
 
+.activity-day-header {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.activity-day-header:first-child {
+  margin-top: 0;
+}
+
+.activity-item {
+  font-size: 10px;
+  color: var(--text-main);
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+
+.activity-time {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
 /* SHELL: BOTTOM 50% */
 .shell-block {
   display: flex;
