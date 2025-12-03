@@ -51,6 +51,11 @@ const modalInput = document.getElementById("modalInput");
 const modalOk = document.getElementById("modalOk");
 const modalCancel = document.getElementById("modalCancel");
 
+const bookSelectorOverlay = document.getElementById("bookSelectorOverlay");
+const bookSelectorTitle = document.getElementById("bookSelectorTitle");
+const bookSelectorList = document.getElementById("bookSelectorList");
+const bookSelectorCancel = document.getElementById("bookSelectorCancel");
+
 // ---------- CUSTOM MODAL PROMPT ----------
 function customPrompt(title, isPassword = false) {
   return new Promise((resolve) => {
@@ -87,6 +92,67 @@ function customPrompt(title, isPassword = false) {
     modalOk.addEventListener("click", onOk);
     modalCancel.addEventListener("click", onCancel);
     modalInput.addEventListener("keydown", onKey);
+  });
+}
+
+// ---------- BOOK SELECTOR MODAL ----------
+function selectBook(filterFn) {
+  return new Promise((resolve) => {
+    const myBooks = books.filter(filterFn);
+    
+    bookSelectorList.innerHTML = "";
+    
+    if (myBooks.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "book-selector-empty";
+      empty.textContent = language === "ko" 
+        ? "선택할 책이 없습니다." 
+        : language === "ja"
+        ? "選択できる本がありません。"
+        : "No books available.";
+      bookSelectorList.appendChild(empty);
+    } else {
+      myBooks.forEach((book) => {
+        const item = document.createElement("div");
+        item.className = "book-selector-item";
+        
+        const pct = formatPercent(book);
+        
+        item.innerHTML = `
+          <div class="book-title">${book.title}</div>
+          <div class="book-author">${book.author}</div>
+          <div class="book-progress">${book.pagesRead} / ${book.totalPages} pages (${pct}%)</div>
+        `;
+        
+        item.addEventListener("click", () => {
+          cleanup();
+          resolve(book);
+        });
+        
+        bookSelectorList.appendChild(item);
+      });
+    }
+    
+    bookSelectorOverlay.classList.add("active");
+
+    function cleanup() {
+      bookSelectorOverlay.classList.remove("active");
+      bookSelectorCancel.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKey);
+      inputEl.focus();
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(null);
+    }
+
+    function onKey(e) {
+      if (e.key === "Escape") onCancel();
+    }
+
+    bookSelectorCancel.addEventListener("click", onCancel);
+    document.addEventListener("keydown", onKey);
   });
 }
 
@@ -344,6 +410,7 @@ function updateUILabels() {
   t("lblProgress", "In Progress", "진행중", "進行中");
   t("lblPages", "Pages Read", "읽은 페이지", "読んだページ数");
   t("feedTitleLabel", "GLOBAL READING FEED", "전체 읽기 피드", "グローバル読書フィード");
+  t("bookSelectorTitle", "Select a Book", "책 선택", "本を選択");
 
   updateSessionInfo();
   updateClock();
@@ -876,7 +943,7 @@ function cmd_help() {
   addLine("  setpass <username>     – set password for a user");
   addLine("  add                    – add new book (for you)");
   addLine("  edit <id>              – edit book meta");
-  addLine("  update <id> <page>     – update pages read");
+  addLine("  update                 – update pages read");
   addLine("  comment <id> <text>    – add comment");
   addLine("  remove <id>            – remove book");
 }
@@ -1066,7 +1133,7 @@ async function cmd_add() {
     lastUpdate: new Date().toISOString(),
   };
   await saveBookToFirebase(book);
-  addLine(`Book added with id ${id}.`, "success");
+  addLine(`Book added: "${title}"`, "success");
   await logEventToFirebase({
     type: "book_add",
     user: currentUser,
@@ -1104,27 +1171,40 @@ async function cmd_edit(args) {
   addLine("Book updated.", "success");
 }
 
-async function cmd_update(args) {
+async function cmd_update() {
   if (currentRole === "guest") {
     addLine("Login required.", "error");
     return;
   }
-  const id = Number(args[0]);
-  const pages = Number(args[1]);
-  const book = books.find((b) => b.id === id);
-  if (!book || isNaN(pages)) {
-    addLine("Usage: update <id> <page>", "error");
+  
+  const book = await selectBook((b) => canEditBook(b));
+  
+  if (!book) {
+    addLine("Cancelled.", "error");
     return;
   }
-  if (!canEditBook(book)) {
-    addLine("Not your book.", "error");
+  
+  const promptText = language === "ko" 
+    ? `현재 ${book.pagesRead}페이지. 새 페이지:`
+    : language === "ja"
+    ? `現在 ${book.pagesRead}ページ。新しいページ数:`
+    : `Currently at page ${book.pagesRead}. New page:`;
+  
+  const pagesStr = await customPrompt(promptText);
+  const pages = Number(pagesStr);
+  
+  if (!pagesStr || isNaN(pages)) {
+    addLine("Cancelled.", "error");
     return;
   }
+  
   const from = book.pagesRead || 0;
   book.pagesRead = Math.min(pages, book.totalPages || pages);
   book.lastUpdate = new Date().toISOString();
   await saveBookToFirebase(book);
-  addLine("Progress updated.", "success");
+  
+  const pct = formatPercent(book);
+  addLine(`Updated "${book.title}" → ${book.pagesRead}/${book.totalPages} (${pct}%)`, "success");
 
   const to = book.pagesRead;
   const delta = to - from;
@@ -1300,7 +1380,7 @@ async function handleCommand(input) {
     case "listusers": cmd_listusers(); break;
     case "add": await cmd_add(); break;
     case "edit": await cmd_edit(args); break;
-    case "update": await cmd_update(args); break;
+    case "update": await cmd_update(); break;
     case "comment": await cmd_comment(args); break;
     case "remove": await cmd_remove(args); break;
     case "weather": cmd_weather(); break;
