@@ -93,10 +93,18 @@
         </div>
 
         <div class="activity-block">
-          <div class="activity-section">
-            <div class="stats-title" id="streakLabel">READING STREAK</div>
-            <div class="recent-text" id="streakText">
-              Loading streak…
+          <div class="activity-section streak-section">
+            <div class="streak-header">
+              <span class="stats-title" id="streakLabel">READING STREAK</span>
+              <select id="streakUserSelect" class="streak-user-select">
+                <option value="all">All Readers</option>
+              </select>
+            </div>
+            <div class="streak-content">
+              <div class="streak-graph" id="streakGraph"></div>
+              <div class="streak-stats" id="streakText">
+                Loading streak…
+              </div>
             </div>
           </div>
           <div class="activity-section">
