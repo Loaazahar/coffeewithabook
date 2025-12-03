@@ -40,6 +40,10 @@ const weatherDataDaeguEl = document.getElementById("weatherDataDaegu");
 const weatherDataKansaiEl = document.getElementById("weatherDataKansai");
 const feedOutputEl = document.getElementById("feedOutput");
 const streakTextEl = document.getElementById("streakText");
+const streakGraphEl = document.getElementById("streakGraph");
+const streakUserSelectEl = document.getElementById("streakUserSelect");
+
+let selectedStreakUser = "all";
 
 const currentReadersEl = document.getElementById("currentReadersContainer");
 const quoteEl = document.getElementById("quoteContainer");
@@ -634,11 +638,18 @@ function updateActivitySidebar() {
 
 // ---------- STREAK ----------
 function updateStreak() {
-  const myEvents = currentUser === "guest" 
-    ? events.filter((ev) => ev.type === "progress")
-    : events.filter(
-        (ev) => ev.type === "progress" && (ev.ownerUser === currentUser || ev.user === currentUser)
-      );
+  populateStreakUserSelector();
+  
+  const targetUser = selectedStreakUser;
+  
+  let filteredEvents;
+  if (targetUser === "all") {
+    filteredEvents = events.filter((ev) => ev.type === "progress");
+  } else {
+    filteredEvents = events.filter(
+      (ev) => ev.type === "progress" && (ev.ownerUser === targetUser || ev.user === targetUser)
+    );
+  }
 
   const today = new Date();
   const days = [];
@@ -649,7 +660,7 @@ function updateStreak() {
     days.push({ key, date: d, pages: 0 });
   }
 
-  myEvents.forEach((ev) => {
+  filteredEvents.forEach((ev) => {
     const evDate = new Date(ev.timestamp);
     const dayKey = evDate.toISOString().slice(0, 10);
     
@@ -671,31 +682,115 @@ function updateStreak() {
     else break;
   }
 
+  renderStreakGraph(days);
+
+  const totalPages = days.reduce((sum, d) => sum + d.pages, 0);
+  const avgPages = Math.round(totalPages / 7);
+  
   const lines = [];
   
-  const streakLabel = currentUser === "guest" 
-    ? (language === "ko" ? "전체 연속 일수" : language === "ja" ? "全体の連続日数" : "Total Streak")
-    : (language === "ko" ? "연속 일수" : language === "ja" ? "連続日数" : "Streak");
+  const streakLabel = language === "ko" ? "연속" : language === "ja" ? "連続" : "Streak";
+  const totalLabel = language === "ko" ? "총" : language === "ja" ? "合計" : "Total";
+  const avgLabel = language === "ko" ? "평균" : language === "ja" ? "平均" : "Avg";
 
   if (language === "ko") {
-    lines.push(`${streakLabel}: ${streak}일`);
+    lines.push(`${streakLabel}: ${streak}일 | ${totalLabel}: ${totalPages}p | ${avgLabel}: ${avgPages}p/일`);
   } else if (language === "ja") {
-    lines.push(`${streakLabel}: ${streak}日`);
+    lines.push(`${streakLabel}: ${streak}日 | ${totalLabel}: ${totalPages}p | ${avgLabel}: ${avgPages}p/日`);
   } else {
-    lines.push(`${streakLabel}: ${streak} day(s)`);
+    lines.push(`${streakLabel}: ${streak}d | ${totalLabel}: ${totalPages}p | ${avgLabel}: ${avgPages}p/d`);
   }
-
-  days.forEach((d) => {
-    const dateStr = formatDateShort(d.date);
-    const has = d.pages > 0;
-    const mark = has ? "✔" : "✖";
-    lines.push(`${dateStr}: ${mark} ${d.pages}p`);
-  });
 
   streakTextEl.innerHTML = lines.join("<br>");
 }
 
+function populateStreakUserSelector() {
+  const allUsers = new Set();
+  
+  events.forEach((ev) => {
+    if (ev.type === "progress") {
+      if (ev.ownerUser) allUsers.add(ev.ownerUser);
+      if (ev.user) allUsers.add(ev.user);
+    }
+  });
+  
+  books.forEach((b) => {
+    if (b.owner) allUsers.add(b.owner);
+  });
+
+  const currentOptions = Array.from(streakUserSelectEl.options).map(o => o.value);
+  const newUsers = ["all", ...Array.from(allUsers).sort()];
+  
+  if (JSON.stringify(currentOptions) !== JSON.stringify(newUsers)) {
+    const previousValue = streakUserSelectEl.value;
+    streakUserSelectEl.innerHTML = "";
+    
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = language === "ko" ? "전체" : language === "ja" ? "全員" : "All Readers";
+    streakUserSelectEl.appendChild(allOption);
+    
+    allUsers.forEach((user) => {
+      const option = document.createElement("option");
+      option.value = user;
+      option.textContent = user;
+      streakUserSelectEl.appendChild(option);
+    });
+    
+    if (newUsers.includes(previousValue)) {
+      streakUserSelectEl.value = previousValue;
+    }
+  }
+}
+
+function renderStreakGraph(days) {
+  const maxPages = Math.max(...days.map(d => d.pages), 1);
+  
+  streakGraphEl.innerHTML = "";
+  
+  days.forEach((d) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "streak-bar-wrapper";
+    
+    const pagesLabel = document.createElement("div");
+    pagesLabel.className = "streak-bar-pages";
+    pagesLabel.textContent = d.pages > 0 ? d.pages : "";
+    
+    const bar = document.createElement("div");
+    bar.className = "streak-bar" + (d.pages === 0 ? " empty" : "");
+    const heightPercent = d.pages > 0 ? Math.max((d.pages / maxPages) * 100, 8) : 8;
+    bar.style.height = heightPercent + "%";
+    
+    const label = document.createElement("div");
+    label.className = "streak-bar-label";
+    label.textContent = formatDateShort(d.date);
+    
+    wrapper.appendChild(pagesLabel);
+    wrapper.appendChild(bar);
+    wrapper.appendChild(label);
+    streakGraphEl.appendChild(wrapper);
+  });
+}
+
+streakUserSelectEl.addEventListener("change", (e) => {
+  selectedStreakUser = e.target.value;
+  updateStreak();
+});
+
 function formatDateShort(date) {
+  const month = date.getMonth();
+  const day = date.getDate();
+  
+  if (language === "ko") {
+    return `${day}`;
+  } else if (language === "ja") {
+    return `${day}`;
+  } else {
+    return `${day}`;
+  }
+}
+
+function formatDateFull(date) {
   const month = date.getMonth();
   const day = date.getDate();
   
@@ -904,8 +999,16 @@ const VOCAB_POOL = [
   }
 ];
 
-let currentQuoteIndex = Math.floor(Math.random() * QUOTES_POOL.length);
-let currentVocabIndex = Math.floor(Math.random() * VOCAB_POOL.length);
+function getDayOfYear() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now - start;
+  const oneDay = 1000 * 60 * 60 * 24;
+  return Math.floor(diff / oneDay);
+}
+
+let currentQuoteIndex = getDayOfYear() % QUOTES_POOL.length;
+let currentVocabIndex = getDayOfYear() % VOCAB_POOL.length;
 
 function getWeekdayName(dayIndex) {
   if (language === "ko") {
@@ -1712,6 +1815,3 @@ async function init() {
 }
 
 init();
-
-setInterval(rotateQuote, 30000);
-setInterval(rotateVocab, 45000);
