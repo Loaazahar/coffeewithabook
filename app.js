@@ -427,6 +427,7 @@ function updateUILabels() {
   renderCurrentReaders();
   renderQuote();
   renderVocab();
+  renderMood(null);
   fetchWeather();
 
   localStorage.setItem(STORAGE_KEY_LANG, language);
@@ -1126,16 +1127,29 @@ function rotateVocab() {
 }
 
 function renderMood(moodText) {
+  let moodLabel;
+
+  if (language === "ko") {
+    moodLabel = "기분";
+  } else if (language === "ja") {
+    moodLabel = "ムード";
+  } else {
+    moodLabel = "MOOD";
+  }
+
+  const display = moodText || (
+    language === "ko"
+      ? "📖 조용한 독서 시간"
+      : language === "ja"
+      ? "📖 静かな読書時間"
+      : "📖 Quiet reading time"
+  );
+
   const lines = [
-    `<span class="accent-amber">MOOD</span>`,
-    moodText || (
-      language === "ko"
-        ? "📖 조용한 독서 시간"
-        : language === "ja"
-        ? "📖 静かな読書時間"
-        : "📖 Quiet reading time"
-    )
+    `<span class="accent-amber">${moodLabel}</span>`,
+    display
   ];
+
   moodEl.innerHTML = lines.join("<br>");
 }
 
@@ -1938,6 +1952,7 @@ async function init() {
 }
 
 init();
+
 
 
 
