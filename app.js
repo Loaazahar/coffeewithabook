@@ -1021,43 +1021,45 @@ function getWeekdayName(dayIndex) {
 
 function weatherCodeToText(code) {
   const base = {
-    0: { en: "Clear", ko: "맑음", ja: "快晴" },
-    1: { en: "Mostly clear", ko: "대체로 맑음", ja: "おおむね晴れ" },
-    2: { en: "Partly cloudy", ko: "구름 조금", ja: "一部曇り" },
-    3: { en: "Overcast", ko: "흐림", ja: "曇り" },
+    0:  { en: "Clear", ko: "맑음", ja: "快晴" },
+    1:  { en: "Mostly clear", ko: "대체로 맑음", ja: "おおむね晴れ" },
+    2:  { en: "Partly cloudy", ko: "구름 조금", ja: "一部曇り" },
+    3:  { en: "Overcast", ko: "흐림", ja: "曇り" },
 
     45: { en: "Fog", ko: "안개", ja: "霧" },
-    48: { en: "Depositing fog", ko: "짙은 안개", ja: "濃い霧" },
+    48: { en: "Depositing rime fog", ko: "서리 안개", ja: "霧氷を伴う霧" },
 
-    51: { en: "Light drizzle", ko: "가벼운 이슬비", ja: "弱い霧雨" },
-    53: { en: "Moderate drizzle", ko: "보통 이슬비", ja: "並の霧雨" },
-    55: { en: "Dense drizzle", ko: "강한 이슬비", ja: "強い霧雨" },
+    51: { en: "Drizzle (light)", ko: "이슬비 (약)", ja: "霧雨（弱）" },
+    53: { en: "Drizzle (moderate)", ko: "이슬비 (중)", ja: "霧雨（中）" },
+    55: { en: "Drizzle (dense)", ko: "이슬비 (강)", ja: "霧雨（強）" },
 
-    56: { en: "Light freezing drizzle", ko: "약한 빙설비", ja: "弱い着氷性霧雨" },
-    57: { en: "Dense freezing drizzle", ko: "강한 빙설비", ja: "強い着氷性霧雨" },
+    56: { en: "Freezing drizzle (light)", ko: "착빙 이슬비 (약)", ja: "着氷霧雨（弱）" },
+    57: { en: "Freezing drizzle (dense)", ko: "착빙 이슬비 (강)", ja: "着氷霧雨（強）" },
 
-    61: { en: "Light rain", ko: "약한 비", ja: "弱い雨" },
-    63: { en: "Moderate rain", ko: "보통 비", ja: "並の雨" },
-    65: { en: "Heavy rain", ko: "강한 비", ja: "強い雨" },
+    61: { en: "Rain (light)", ko: "비 (약)", ja: "雨（弱）" },
+    63: { en: "Rain (moderate)", ko: "비 (중)", ja: "雨（中）" },
+    65: { en: "Rain (heavy)", ko: "비 (강)", ja: "雨（強）" },
 
-    66: { en: "Light freezing rain", ko: "약한 빙비", ja: "弱い着氷性の雨" },
-    67: { en: "Heavy freezing rain", ko: "강한 빙비", ja: "強い着氷性の雨" },
+    66: { en: "Freezing rain (light)", ko: "착빙 비 (약)", ja: "氷雨（弱）" },
+    67: { en: "Freezing rain (heavy)", ko: "착빙 비 (강)", ja: "氷雨（強）" },
 
-    71: { en: "Light snow", ko: "가벼운 눈", ja: "弱い雪" },
-    73: { en: "Moderate snow", ko: "보통 눈", ja: "並の雪" },
-    75: { en: "Heavy snow", ko: "폭설", ja: "大雪" },
-    77: { en: "Snow grains", ko: "싸락눈", ja: "霰" },
+    71: { en: "Snow (light)", ko: "눈 (약)", ja: "雪（弱）" },
+    73: { en: "Snow (moderate)", ko: "눈 (중)", ja: "雪（中）" },
+    75: { en: "Snow (heavy)", ko: "눈 (강)", ja: "雪（強）" },
 
-    80: { en: "Light rain showers", ko: "약한 소나기", ja: "弱いにわか雨" },
-    81: { en: "Moderate rain showers", ko: "보통 소나기", ja: "並のにわか雨" },
-    82: { en: "Violent rain showers", ko: "강한 소나기", ja: "激しいにわか雨" },
+    77: { en: "Snow grains", ko: "싸락눈", ja: "雪あられ" },
 
-    85: { en: "Snow showers", ko: "눈 소나기", ja: "にわか雪" },
-    86: { en: "Heavy snow showers", ko: "강한 눈 소나기", ja: "激しいにわか雪" },
+    80: { en: "Rain showers (light)", ko: "소나기 (약)", ja: "にわか雨（弱）" },
+    81: { en: "Rain showers (moderate)", ko: "소나기 (중)", ja: "にわか雨（中）" },
+    82: { en: "Rain showers (violent)", ko: "소나기 (강)", ja: "にわか雨（強）" },
 
-    95: { en: "Thunderstorm", ko: "뇌우", ja: "雷雨" },
-    96: { en: "Thunderstorm w/ hail", ko: "우박 뇌우", ja: "雹を伴う雷雨" },
-    99: { en: "Severe thunderstorm w/ hail", ko: "강한 우박 뇌우", ja: "激しい雹雷雨" },
+    85: { en: "Snow showers (light)", ko: "눈 소나기 (약)", ja: "にわか雪（弱）" },
+    86: { en: "Snow showers (heavy)", ko: "눈 소나기 (강)", ja: "にわか雪（強）" },
+
+    95: { en: "Thunderstorm", ko: "천둥번개", ja: "雷雨" },
+    
+    96: { en: "Thunderstorm w/ hail (light)", ko: "우박 천둥번개 (약)", ja: "雷雨（小粒ひょう）" },
+    99: { en: "Thunderstorm w/ hail (heavy)", ko: "우박 천둥번개 (강)", ja: "雷雨（大粒ひょう）" }
   };
 
   const info = base[code] || { en: "Unknown", ko: "알 수 없음", ja: "不明" };
@@ -1936,5 +1938,6 @@ async function init() {
 }
 
 init();
+
 
 
