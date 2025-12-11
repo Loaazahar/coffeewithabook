@@ -1491,17 +1491,17 @@ function cmd_view(args) {
   if (book.comments && book.comments.length) {
     addLine("Comments:");
     book.comments.forEach((c) => {
-  // Skip if comment object missing OR contains string "undefined"
-  if (
-    !c ||
-    c.user === undefined || c.user === "undefined" ||
-    c.text === undefined || c.text === "undefined" ||
-    c.timestamp === undefined || c.timestamp === "undefined"
-  ) {
+  // Skip if c is not a real object
+  if (typeof c !== "object" || Array.isArray(c) || c === null) {
     return;
   }
 
-  // Validate timestamp
+  // Skip if required fields missing
+  if (!c.user || !c.text || !c.timestamp) {
+    return;
+  }
+
+  // Skip invalid timestamp
   const tsObj = new Date(c.timestamp);
   if (isNaN(tsObj.getTime())) return;
 
@@ -2027,6 +2027,7 @@ async function init() {
 }
 
 init();
+
 
 
 
