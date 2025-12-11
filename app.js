@@ -1295,26 +1295,78 @@ function canEditBook(book) {
 
 // ---------- COMMANDS ----------
 function cmd_help() {
-  addLine("Commands:", "success");
-  addLine("  help                   – show this help");
-  addLine("  list [user]            – list books (all or by user)");
-  addLine("  view <id>              – view one book");
-  addLine("  weather                – refresh Daegu weather");
-  addLine("  lang en|ko|ja          – change UI language");
-  addLine("  login                  – login as user");
-  addLine("  logout                 – logout to guest");
-  addLine("  changepass             – change your password");
-  addLine("Admin:", "success");
-  addLine("  createuser <name>      – create member");
-  addLine("  removeuser <name>      – remove user");
-  addLine("  listusers              – list users");
-  addLine("  setpass <username>     – set password for a user");
-  addLine("  add                    – add new book (for you)");
-  addLine("  edit <id>              – edit book meta");
-  addLine("  update                 – update pages read");
-  addLine("  comment <id> <text>    – add comment");
-  addLine("  remove <id>            – remove book");
+  const lines = [];
+
+  if (language === "ko") {
+    lines.push("📘 명령어 목록:");
+    lines.push("  help                 – 이 도움말 표시");
+    lines.push("  list [user]          – 책 목록 보기 (전체 또는 사용자별)");
+    lines.push("  view <id>            – 책 상세 정보 보기");
+    lines.push("  update               – 진행도 업데이트 (책 선택 창 표시)");
+    lines.push("  comment              – 코멘트 추가 (책 선택 → 입력 창 표시)");
+    lines.push("  remove               – 책 삭제 (책 선택 창 표시)");
+    lines.push("  weather              – 대구 · 간사이 날씨 새로고침");
+    lines.push("  lang en|ko|ja        – 언어 변경");
+    lines.push("  login                – 로그인");
+    lines.push("  logout               – 로그아웃");
+    lines.push("  changepass           – 내 비밀번호 변경");
+    lines.push("");
+    lines.push("🔒 관리자 명령:");
+    lines.push("  createuser <name>    – 멤버 생성");
+    lines.push("  removeuser <name>    – 사용자 삭제");
+    lines.push("  listusers            – 사용자 목록 보기");
+    lines.push("  setpass <user>       – 특정 사용자 비밀번호 재설정");
+    lines.push("  add                  – 새 책 추가");
+    lines.push("  edit <id>            – 책 정보 수정");
+
+  } else if (language === "ja") {
+    lines.push("📘 コマンド一覧:");
+    lines.push("  help                 – このヘルプを表示");
+    lines.push("  list [user]          – 本の一覧を表示（全体またはユーザー別）");
+    lines.push("  view <id>            – 本の詳細を見る");
+    lines.push("  update               – 読書進捗を更新（本選択ポップアップ）");
+    lines.push("  comment              – コメント追加（本選択 → 入力ポップアップ）");
+    lines.push("  remove               – 本を削除（本選択ポップアップ）");
+    lines.push("  weather              – 大邱・関西の天気を更新");
+    lines.push("  lang en|ko|ja        – 表示言語を変更");
+    lines.push("  login                – ログイン");
+    lines.push("  logout               – ログアウト");
+    lines.push("  changepass           – パスワード変更");
+    lines.push("");
+    lines.push("🔒 管理者用コマンド:");
+    lines.push("  createuser <name>    – メンバー作成");
+    lines.push("  removeuser <name>    – ユーザー削除");
+    lines.push("  listusers            – ユーザー一覧");
+    lines.push("  setpass <user>       – パスワード再設定");
+    lines.push("  add                  – 新しい本を追加");
+    lines.push("  edit <id>            – 本情報を編集");
+
+  } else {
+    lines.push("📘 Commands:");
+    lines.push("  help                 – show this help");
+    lines.push("  list [user]          – list books (all or by user)");
+    lines.push("  view <id>            – view book details");
+    lines.push("  update               – update progress (opens book selector)");
+    lines.push("  comment              – add comment (selector → input modal)");
+    lines.push("  remove               – remove book (opens book selector)");
+    lines.push("  weather              – refresh weather for Daegu & Kansai");
+    lines.push("  lang en|ko|ja        – change interface language");
+    lines.push("  login                – login");
+    lines.push("  logout               – logout");
+    lines.push("  changepass           – change your password");
+    lines.push("");
+    lines.push("🔒 Admin:");
+    lines.push("  createuser <name>    – create member");
+    lines.push("  removeuser <name>    – remove user");
+    lines.push("  listusers            – list users");
+    lines.push("  setpass <user>       – reset user's password");
+    lines.push("  add                  – add new book");
+    lines.push("  edit <id>            – edit book metadata");
+  }
+
+  lines.forEach((ln) => addLine(ln));
 }
+
 
 function cmd_list(args) {
   let targetUser = args[0];
@@ -1588,36 +1640,65 @@ async function cmd_update() {
   });
 }
 
-async function cmd_comment(args) {
+async function cmd_comment() {
   if (currentRole === "guest") {
-    addLine("Login required.", "error");
+    addLine(
+      language === "ko" ? "로그인이 필요합니다." :
+      language === "ja" ? "ログインが必要です。" :
+      "Login required.",
+      "error"
+    );
     return;
   }
-  const id = Number(args[0]);
-  if (!id) {
-    addLine("Usage: comment <id> <text>", "error");
-    return;
-  }
-  const book = books.find((b) => b.id === id);
+
+  // Step 1: Select a book
+  const book = await selectBook((b) => canEditBook(b));
   if (!book) {
-    addLine("Book not found.", "error");
+    addLine(
+      language === "ko" ? "취소되었습니다." :
+      language === "ja" ? "キャンセルされました。" :
+      "Cancelled.",
+      "error"
+    );
     return;
   }
-  const text = args.slice(1).join(" ");
+
+  // Step 2: Enter comment
+  const label =
+    language === "ko" ? "코멘트 입력:" :
+    language === "ja" ? "コメントを入力してください:" :
+    "Enter comment:";
+
+  const text = await customPrompt(label);
   if (!text) {
-    addLine("No comment text.", "error");
+    addLine(
+      language === "ko" ? "코멘트가 입력되지 않았습니다." :
+      language === "ja" ? "コメントが入力されていません。" :
+      "No comment entered.",
+      "error"
+    );
     return;
   }
+
+  // Save comment
   const comment = {
     user: currentUser,
     text,
     pagesAt: book.pagesRead || 0,
     timestamp: new Date().toISOString(),
   };
+
   book.comments.push(comment);
   book.lastUpdate = comment.timestamp;
+
   await saveBookToFirebase(book);
-  addLine("Comment added.", "success");
+
+  addLine(
+    language === "ko" ? `코멘트가 "${book.title}"에 추가되었습니다.` :
+    language === "ja" ? `"${book.title}" にコメントを追加しました。` :
+    `Comment added to "${book.title}".`,
+    "success"
+  );
 
   await logEventToFirebase({
     type: "comment",
@@ -1632,24 +1713,38 @@ async function cmd_comment(args) {
   });
 }
 
-async function cmd_remove(args) {
+async function cmd_remove() {
   if (currentRole === "guest") {
-    addLine("Login required.", "error");
+    addLine(
+      language === "ko" ? "로그인이 필요합니다." :
+      language === "ja" ? "ログインが必要です。" :
+      "Login required.",
+      "error"
+    );
     return;
   }
-  const id = Number(args[0]);
-  const idx = books.findIndex((b) => b.id === id);
-  if (idx === -1) {
-    addLine("Book not found.", "error");
+
+  const book = await selectBook((b) => canEditBook(b));
+
+  if (!book) {
+    addLine(
+      language === "ko" ? "취소되었습니다." :
+      language === "ja" ? "キャンセルされました。" :
+      "Cancelled.",
+      "error"
+    );
     return;
   }
-  const book = books[idx];
-  if (!canEditBook(book)) {
-    addLine("Not your book.", "error");
-    return;
-  }
+
   await deleteBookFromFirebase(book);
-  addLine("Book removed.", "success");
+
+  addLine(
+    language === "ko" ? `"${book.title}" 책이 삭제되었습니다.` :
+    language === "ja" ? `"${book.title}" を削除しました。` :
+    `Book removed: "${book.title}"`,
+    "success"
+  );
+
   await logEventToFirebase({
     type: "book_remove",
     user: currentUser,
@@ -1815,3 +1910,4 @@ async function init() {
 }
 
 init();
+
