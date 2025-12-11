@@ -1917,6 +1917,49 @@ async function cmd_setpass(args) {
     targetUser: target
   });
 }
+async function cmd_cleanevents(args) {
+  const username = args[0];
+
+  if (!username) {
+    addLine("Usage: cleanevents <username>", "error");
+    return;
+  }
+
+  addLine(`Cleaning events for ${username}…`, "success");
+
+  // Query all events for this user
+  const snapshot = await db
+    .collection("events")
+    .where("user", "==", username)
+    .get();
+
+  const snapshot2 = await db
+    .collection("events")
+    .where("ownerUser", "==", username)
+    .get();
+
+  let deleteCount = 0;
+
+  // Delete events where user === username
+  for (const doc of snapshot.docs) {
+    await db.collection("events").doc(doc.id).delete();
+    deleteCount++;
+  }
+
+  // Delete events where ownerUser === username
+  for (const doc of snapshot2.docs) {
+    await db.collection("events").doc(doc.id).delete();
+    deleteCount++;
+  }
+
+  addLine(`Deleted ${deleteCount} events for ${username}.`, "success");
+
+  // Reload event list after deletion
+  await loadEventsFromFirebase();
+  renderFeed();
+  updateActivitySidebar();
+  updateStreak();
+}
 
 // ---------- COMMAND DISPATCH ----------
 async function handleCommand(input) {
@@ -1951,6 +1994,7 @@ async function handleCommand(input) {
     case "changepass": await cmd_changepass(); break;
     case "setpass": await cmd_setpass(args); break;
     case "debugcomments": cmd_debug_comments(args); break;
+    case "cleanevents": await cmd_cleanevents(args); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
@@ -2027,6 +2071,7 @@ async function init() {
 }
 
 init();
+
 
 
 
