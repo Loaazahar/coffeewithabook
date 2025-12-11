@@ -1950,6 +1950,7 @@ async function handleCommand(input) {
     case "weather": cmd_weather(); break;
     case "changepass": await cmd_changepass(); break;
     case "setpass": await cmd_setpass(args); break;
+    case "debugcomments": cmd_debug_comments(args); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
@@ -1981,6 +1982,21 @@ inputEl.addEventListener("keydown", (e) => {
   }
 });
 
+function cmd_debug_comments(args) {
+  const id = Number(args[0]);
+  const book = books.find((b) => b.id === id);
+  if (!book) {
+    addLine("Book not found.", "error");
+    return;
+  }
+
+  addLine("Raw comments dump:", "success");
+
+  book.comments.forEach((c, i) => {
+    addLine(`#${i}: ` + JSON.stringify(c));
+  });
+}
+
 // ---------- INIT ----------
 async function init() {
   try {
@@ -2011,6 +2027,7 @@ async function init() {
 }
 
 init();
+
 
 
 
