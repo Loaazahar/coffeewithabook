@@ -471,8 +471,8 @@ function renderBookStrip() {
       <span class="progress">${progressText}</span>
     `;
     tile.addEventListener("click", () => {
-      cmd_view([String(book.id)]);
-    });
+  handleCommand("view " + book.id);
+});
     bookStripEl.appendChild(tile);
   });
 }
@@ -886,7 +886,102 @@ const QUOTES_POOL = [
     author: "Charles W. Eliot"
   }
 ];
-
+CLEAR_MOODS = [
+  {
+    en: "☀️ Sunshine reading — the pages feel lighter today.",
+    ko: "☀️ 햇살 독서 — 페이지가 더 가볍게 느껴져요.",
+    ja: "☀️ 陽だまり読書 — ページが軽く感じる日。"
+  },
+  {
+    en: "🌞 Bright skies — a perfect day for calm reading.",
+    ko: "🌞 밝은 하늘 — 차분한 독서에 딱 좋은 날씨.",
+    ja: "🌞 明るい空 — 落ち着いた読書にぴったり。"
+  },
+  {
+    en: "✨ Clear day — your book shines a little more today.",
+    ko: "✨ 맑은 하루 — 오늘은 책이 더 반짝여요.",
+    ja: "✨ 晴れの日 — 本が少し輝いて見える。"
+  }
+];
+PARTLY_CLOUDY_MOODS = [
+  {
+    en: "⛅ Soft sky reading — peaceful and slow.",
+    ko: "⛅ 잔잔한 하늘 아래 독서 — 평온하고 느린 시간.",
+    ja: "⛅ 穏やかな空の読書 — ゆったりした時間。"
+  },
+  {
+    en: "🌥 A gentle mix of sun & clouds — ideal for getting lost in a story.",
+    ko: "🌥 구름과 햇살이 어우러진 날 — 이야기 속에 빠지기 좋은 시간.",
+    ja: "🌥 雲と陽のバランス — 物語に没頭しやすい日。"
+  }
+];
+CLOUDY_MOODS = [
+  {
+    en: "☁️ Grey day reading — perfect for introspection.",
+    ko: "☁️ 흐린 날의 독서 — 생각이 깊어지는 시간.",
+    ja: "☁️ 曇りの日の読書 — 思索に沈むのに最適。"
+  },
+  {
+    en: "🌫 A soft grey sky — ideal for a warm drink + book.",
+    ko: "🌫 부드러운 회색 하늘 — 따뜻한 음료와 책이 잘 어울려요.",
+    ja: "🌫 やわらかな曇り空 — 温かい飲み物と相性抜群。"
+  }
+];
+FOG_MOODS = [
+  {
+    en: "🌫 Misty reading — imagination moves softly.",
+    ko: "🌫 안개 속 독서 — 상상이 천천히 흐르는 시간.",
+    ja: "🌫 霧の読書 — 想像が静かに広がる。"
+  },
+  {
+    en: "🌁 Fog settles — a dreamy reading atmosphere.",
+    ko: "🌁 안개가 스며드는 날 — 몽환적인 독서 분위기.",
+    ja: "🌁 霧が漂う日 — 夢のような読書時間。"
+  }
+];
+RAIN_MOODS = [
+  {
+    en: "🌧 Rainy reading — the raindrops become your background music.",
+    ko: "🌧 빗소리 독서 — 빗방울이 자연스러운 배경음이 돼요.",
+    ja: "🌧 雨音読書 — 雨が優しいBGMになる。"
+  },
+  {
+    en: "☔ Soft rain — perfect for slow, warm reading.",
+    ko: "☔ 잔잔한 비 — 따뜻하고 느린 독서에 딱 좋아요.",
+    ja: "☔ 静かな雨 — ゆっくり読むのに最適。"
+  }
+];
+SNOW_MOODS = [
+  {
+    en: "❄️ Snowy reading — the pages feel warmer in your hands.",
+    ko: "❄️ 눈 내리는 날의 독서 — 책장이 더 따뜻해져요.",
+    ja: "❄️ 雪の日の読書 — 本が手の中で温かく感じる。"
+  },
+  {
+    en: "🌨 Snow outside, warmth inside — perfect reading weather.",
+    ko: "🌨 밖은 눈, 안은 따뜻함 — 최고의 독서 날씨.",
+    ja: "🌨 外は雪、中は暖かい — 読書に最高の日。"
+  }
+];
+STORM_MOODS = [
+  {
+    en: "⚡ Dramatic weather — perfect for dramatic stories.",
+    ko: "⚡ 드라마틱한 날씨 — 드라마틱한 이야기에 잘 어울려요.",
+    ja: "⚡ 劇的な天気 — 劇的な物語とぴったり。"
+  },
+  {
+    en: "⛈ Thunder outside, quiet pages inside.",
+    ko: "⛈ 밖은 천둥, 안은 조용한 페이지.",
+    ja: "⛈ 外は雷雨、中は静かなページ。"
+  }
+];
+UNKNOWN_MOODS = [
+  {
+    en: "📖 Quiet reading time.",
+    ko: "📖 조용한 독서 시간.",
+    ja: "📖 静かな読書時間。"
+  }
+];
 // ---------- VOCAB POOL ----------
 const VOCAB_POOL = [
   {
@@ -1127,30 +1222,28 @@ function rotateVocab() {
 }
 
 function renderMood(moodText) {
-  let moodLabel;
+  let title;
 
   if (language === "ko") {
-    moodLabel = "기분";
+    title = "오늘의 독서 기분";
   } else if (language === "ja") {
-    moodLabel = "ムード";
+    title = "今日の読書ムード";
   } else {
-    moodLabel = "MOOD";
+    title = "Today's Reading Mood";
   }
 
-  const display = moodText || (
-    language === "ko"
+  const finalMood =
+    moodText ||
+    (language === "ko"
       ? "📖 조용한 독서 시간"
       : language === "ja"
       ? "📖 静かな読書時間"
-      : "📖 Quiet reading time"
-  );
+      : "📖 Quiet reading time");
 
-  const lines = [
-    `<span class="accent-amber">${moodLabel}</span>`,
-    display
-  ];
-
-  moodEl.innerHTML = lines.join("<br>");
+  moodEl.innerHTML = `
+    <span class="accent-amber">${title}</span><br>
+    ${finalMood}
+  `;
 }
 
 async function fetchWeatherForCity(lat, lon, targetEl, cityName) {
@@ -1241,69 +1334,20 @@ async function fetchWeatherForCity(lat, lon, targetEl, cityName) {
   }
 }
 
-function getMoodFromWeatherCode(wCode) {
-  let mood;
-  switch (wCode) {
-    case 0:
-    case 1:
-      mood = {
-        en: "☀️ Sunshine reading — pages feel lighter today",
-        ko: "☀️ 햇살 독서 — 마음도 환해지는 느낌",
-        ja: "☀️ 陽だまり読書 — 心がぽかぽか",
-      };
-      break;
-    case 2:
-      mood = {
-        en: "⛅ Soft sky reading — a calm atmosphere for stories",
-        ko: "⛅ 잔잔한 하늘 독서 — 이야기 듣기 좋은 날씨",
-        ja: "⛅ 雲間読書 — 静かな読書時間",
-      };
-      break;
-    case 3:
-      mood = {
-        en: "☁️ Grey day reading — perfect for introspection",
-        ko: "☁️ 차분한 흐림 독서 — 생각이 깊어지는 시간",
-        ja: "☁️ 曇り読書 — 静かに読み込む雰囲気",
-      };
-      break;
-    case 45:
-    case 48:
-      mood = {
-        en: "🌫 Misty reading — imagination moves softly",
-        ko: "🌫 안개 독서 — 상상이 천천히 흘러가요",
-        ja: "🌫 霧の読書 — 思考がふわっと広がる",
-      };
-      break;
-    case 61:
-    case 80:
-      mood = {
-        en: "🌧 Rainy reading — the raindrops are our background music",
-        ko: "🌧 빗소리 독서 — 자연의 ASMR",
-        ja: "🌧 雨音読書 — 雨がBGMになる",
-      };
-      break;
-    case 71:
-      mood = {
-        en: "❄️ Snowy reading — pages feel warmer in your hands",
-        ko: "❄️ 눈 내리는 독서 — 손안의 책이 더 따뜻해져요",
-        ja: "❄️ 雪の読書 — 本が手の中で温かい",
-      };
-      break;
-    case 95:
-      mood = {
-        en: "⚡ Stormy reading — dramatic weather suits dramatic stories",
-        ko: "⚡ 폭우 독서 — 감정이 더 짙어지는 시간",
-        ja: "⚡ 雷雨読書 — 雰囲気が物語を深める",
-      };
-      break;
-    default:
-      mood = {
-        en: "📖 Quiet reading time",
-        ko: "📖 조용한 독서 시간",
-        ja: "📖 静かな読書時間",
-      };
-  }
-  return language === "ko" ? mood.ko : language === "ja" ? mood.ja : mood.en;
+function getMoodFromWeatherCode(w) {
+  let pool;
+
+  if ([0,1].includes(w)) pool = CLEAR_MOODS;
+  else if (w === 2) pool = PARTLY_CLOUDY_MOODS;
+  else if (w === 3) pool = CLOUDY_MOODS;
+  else if ([45,48].includes(w)) pool = FOG_MOODS;
+  else if ([51,53,55,56,57,61,63,65,80,81,82].includes(w)) pool = RAIN_MOODS;
+  else if ([71,73,75,77,85,86].includes(w)) pool = SNOW_MOODS;
+  else if ([95,96,99].includes(w)) pool = STORM_MOODS;
+  else pool = UNKNOWN_MOODS;
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  return pick[language] || pick.en;
 }
 
 async function fetchWeather() {
@@ -1952,6 +1996,7 @@ async function init() {
 }
 
 init();
+
 
 
 
