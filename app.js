@@ -1491,13 +1491,17 @@ function cmd_view(args) {
   if (book.comments && book.comments.length) {
     addLine("Comments:");
     book.comments.forEach((c) => {
-      const ts = new Date(c.timestamp).toLocaleString(
-        language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US"
-      );
-      addLine(
-        ` • [${c.user}] @${c.pagesAt}p "${c.text}" (${ts})`
-      );
-    });
+  // Skip invalid or corrupted comment entries
+  if (!c || !c.user || !c.text || !c.timestamp) return;
+
+  const ts = new Date(c.timestamp).toLocaleString(
+    language === "ko" ? "ko-KR" :
+    language === "ja" ? "ja-JP" :
+    "en-US"
+  );
+
+  addLine(` • [${c.user}] @${c.pagesAt}p "${c.text}" (${ts})`);
+});
   }
 }
 
@@ -1996,6 +2000,7 @@ async function init() {
 }
 
 init();
+
 
 
 
