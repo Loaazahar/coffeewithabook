@@ -1491,10 +1491,21 @@ function cmd_view(args) {
   if (book.comments && book.comments.length) {
     addLine("Comments:");
     book.comments.forEach((c) => {
-  // Skip invalid or corrupted comment entries
-  if (!c || !c.user || !c.text || !c.timestamp) return;
+  // Skip if comment object missing OR contains string "undefined"
+  if (
+    !c ||
+    c.user === undefined || c.user === "undefined" ||
+    c.text === undefined || c.text === "undefined" ||
+    c.timestamp === undefined || c.timestamp === "undefined"
+  ) {
+    return;
+  }
 
-  const ts = new Date(c.timestamp).toLocaleString(
+  // Validate timestamp
+  const tsObj = new Date(c.timestamp);
+  if (isNaN(tsObj.getTime())) return;
+
+  const ts = tsObj.toLocaleString(
     language === "ko" ? "ko-KR" :
     language === "ja" ? "ja-JP" :
     "en-US"
@@ -2000,6 +2011,7 @@ async function init() {
 }
 
 init();
+
 
 
 
