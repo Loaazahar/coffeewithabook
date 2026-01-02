@@ -1995,6 +1995,7 @@ async function handleCommand(input) {
     case "setpass": await cmd_setpass(args); break;
     case "debugcomments": cmd_debug_comments(args); break;
     case "cleanevents": await cmd_cleanevents(args); break;
+    case "viewvisits": await cmd_viewvisits(args); break;
     default:
       addLine("Unknown command: " + cmd, "error");
   }
@@ -2025,6 +2026,36 @@ inputEl.addEventListener("keydown", (e) => {
     }
   }
 });
+async function cmd_viewvisits(args) {
+  if (!requireAdmin()) return;
+  
+  const limit = Number(args[0]) || 20;
+  
+  addLine(`Recent ${limit} visits:`, "success");
+  
+  try {
+    const snapshot = await db.collection("visits")
+      .orderBy("timestamp", "desc")
+      .limit(limit)
+      .get();
+    
+    if (snapshot.empty) {
+      addLine("No visits recorded yet.", "error");
+      return;
+    }
+    
+    snapshot.forEach((doc) => {
+      const v = doc.data();
+      const time = new Date(v.timestamp).toLocaleString(
+        language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US"
+      );
+      const browser = v.userAgent?.includes("Mobile") ? "📱" : "💻";
+      addLine(`${browser} ${time} | ${v.language} | ${v.referrer}`);
+    });
+  } catch (e) {
+    addLine("Error loading visits: " + e.message, "error");
+  }
+}
 async function logVisit() {
   await db.collection("visits").add({
     timestamp: new Date().toISOString(),
@@ -2079,6 +2110,7 @@ async function init() {
 }
 
 init();
+
 
 
 
