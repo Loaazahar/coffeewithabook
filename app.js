@@ -2025,7 +2025,14 @@ inputEl.addEventListener("keydown", (e) => {
     }
   }
 });
-
+async function logVisit() {
+  await db.collection("visits").add({
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    referrer: document.referrer || "direct"
+  });
+}
 function cmd_debug_comments(args) {
   const id = Number(args[0]);
   const book = books.find((b) => b.id === id);
@@ -2061,6 +2068,7 @@ async function init() {
     setupRealtimeListeners();
     
     updateUserLabel();
+    logVisit();
     updateClock();
     refreshStats();
     renderBookStrip();
@@ -2071,6 +2079,7 @@ async function init() {
 }
 
 init();
+
 
 
 
