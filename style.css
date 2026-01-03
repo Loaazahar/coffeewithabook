@@ -604,7 +604,23 @@ body {
   border-color: var(--accent);
   color: var(--accent);
 }
+#modalInputText,
+#modalInputPassword {
+  width: 100%;
+  background: var(--bg-terminal);
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  caret-color: var(--accent);
+}
 
+#modalInputText:focus,
+#modalInputPassword:focus {
+  border-color: var(--accent);
+}
 /* BOOK SELECTOR MODAL */
 .book-selector-box {
   min-width: 320px;
@@ -775,24 +791,9 @@ body {
   color: var(--accent-amber);
   font-size: 10px;
 }
-  #modalInputText,
-#modalInputPassword {
-  width: 100%;
-  background: var(--bg-terminal);
-  border: 1px solid var(--border-soft);
-  color: var(--text-main);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  padding: 8px 10px;
-  outline: none;
-  caret-color: var(--accent);
+
 }
 
-#modalInputText:focus,
-#modalInputPassword:focus {
-  border-color: var(--accent);
-}
-}
 
 
 
