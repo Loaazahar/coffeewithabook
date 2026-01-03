@@ -787,4 +787,9 @@ body {
     min-width: 90%;
     max-width: 95%;
   }
+  .book-tile span.rating {
+  color: var(--accent-amber);
+  font-size: 10px;
 }
+}
+
