@@ -66,25 +66,13 @@ function customPrompt(title, isPassword = false) {
   return new Promise((resolve) => {
     modalTitle.textContent = title;
     modalInput.type = isPassword ? "password" : "text";
+    modalInput.setAttribute("autocomplete", isPassword ? "off" : "on");
+    modalInput.setAttribute("autocorrect", isPassword ? "off" : "on");
+    modalInput.setAttribute("autocapitalize", isPassword ? "off" : "sentences");
+    modalInput.setAttribute("inputmode", "text");
     modalInput.value = "";
-
-if (isPassword) {
-  modalInput.setAttribute("autocomplete", "off");
-  modalInput.setAttribute("autocorrect", "off");
-  modalInput.setAttribute("autocapitalize", "off");
-  modalInput.setAttribute("spellcheck", "false");
-  modalInput.setAttribute("inputmode", "text");
-} else {
-  modalInput.setAttribute("autocomplete", "on");
-  modalInput.setAttribute("autocorrect", "on");
-  modalInput.setAttribute("autocapitalize", "sentences");
-  modalInput.setAttribute("spellcheck", "true");
-  modalInput.setAttribute("inputmode", "text");
-  modalInput.setAttribute("name", "comment-input");
-}
-
-modalOverlay.classList.add("active");
-
+    modalOverlay.classList.add("active");
+    modalInput.focus();
     }
 
     function onOk() {
@@ -2152,6 +2140,7 @@ async function init() {
 }
 
 init();
+
 
 
 
