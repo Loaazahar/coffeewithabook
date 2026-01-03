@@ -778,7 +778,6 @@ body {
   #modalInputText,
 #modalInputPassword {
   width: 100%;
-  background: var(--bg-terminal);
   border: 1px solid var(--border-soft);
   color: var(--text-main);
   font-family: var(--font-mono);
@@ -793,5 +792,6 @@ body {
   border-color: var(--accent);
 }
 }
+
 
 
