@@ -52,7 +52,8 @@ const moodEl = document.getElementById("moodContainer");
 
 const modalOverlay = document.getElementById("modalOverlay");
 const modalTitle = document.getElementById("modalTitle");
-const modalInput = document.getElementById("modalInput");
+const modalInputText = document.getElementById("modalInputText");
+const modalInputPassword = document.getElementById("modalInputPassword");
 const modalOk = document.getElementById("modalOk");
 const modalCancel = document.getElementById("modalCancel");
 
@@ -65,25 +66,27 @@ const bookSelectorCancel = document.getElementById("bookSelectorCancel");
 function customPrompt(title, isPassword = false) {
   return new Promise((resolve) => {
     modalTitle.textContent = title;
-    modalInput.type = isPassword ? "password" : "text";
-    modalInput.setAttribute("autocomplete", isPassword ? "off" : "on");
-    modalInput.setAttribute("autocorrect", isPassword ? "off" : "on");
-    modalInput.setAttribute("autocapitalize", isPassword ? "off" : "sentences");
-    modalInput.setAttribute("inputmode", "text");
-    modalInput.value = "";
+    
+    const activeInput = isPassword ? modalInputPassword : modalInputText;
+    const hiddenInput = isPassword ? modalInputText : modalInputPassword;
+    
+    activeInput.style.display = "block";
+    hiddenInput.style.display = "none";
+    activeInput.value = "";
+    
     modalOverlay.classList.add("active");
-    modalInput.focus();
+    activeInput.focus();
 
     function cleanup() {
       modalOverlay.classList.remove("active");
       modalOk.removeEventListener("click", onOk);
       modalCancel.removeEventListener("click", onCancel);
-      modalInput.removeEventListener("keydown", onKey);
+      activeInput.removeEventListener("keydown", onKey);
       inputEl.focus();
     }
 
     function onOk() {
-      const val = modalInput.value;
+      const val = activeInput.value;
       cleanup();
       resolve(val || null);
     }
@@ -100,7 +103,7 @@ function customPrompt(title, isPassword = false) {
 
     modalOk.addEventListener("click", onOk);
     modalCancel.addEventListener("click", onCancel);
-    modalInput.addEventListener("keydown", onKey);
+    activeInput.addEventListener("keydown", onKey);
   });
 }
 
@@ -2147,6 +2150,7 @@ async function init() {
 }
 
 init();
+
 
 
 
