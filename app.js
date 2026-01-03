@@ -469,14 +469,16 @@ function renderBookStrip() {
     const tile = document.createElement("button");
     tile.className = "book-tile" + (pct >= 100 ? " finished" : "");
     const progressText = `${book.pagesRead}/${book.totalPages} (${pct}%)`;
+    const starsText = book.rating ? "⭐".repeat(book.rating) : "";
     tile.innerHTML = `
       <span class="title">${book.title}</span>
       <span class="meta">${book.author} • ${book.owner}</span>
       <span class="progress">${progressText}</span>
+      ${starsText ? `<span class="rating">${starsText}</span>` : ""}
     `;
     tile.addEventListener("click", () => {
-  handleCommand("view " + book.id);
-});
+      handleCommand("view " + book.id);
+    });
     bookStripEl.appendChild(tile);
   });
 }
@@ -1444,6 +1446,7 @@ function cmd_help() {
     lines.push("  login                – login");
     lines.push("  logout               – logout");
     lines.push("  changepass           – change your password");
+    lines.push("  rate                 – rate a finished book (1-5 stars)");
     lines.push("");
     lines.push("🔒 Admin:");
     lines.push("  createuser <name>    – create member");
@@ -1492,6 +1495,9 @@ function cmd_view(args) {
   addLine(`Author: ${book.author}`);
   addLine(`Owner: ${book.owner}`);
   addLine(`Progress: ${book.pagesRead}/${book.totalPages} (${pct}%)`);
+  if (book.rating) {
+  addLine(`Rating: ${"⭐".repeat(book.rating)}`);
+}
   if (book.comments && book.comments.length) {
     addLine("Comments:");
     book.comments.forEach((c) => {
@@ -1964,7 +1970,33 @@ async function cmd_cleanevents(args) {
   updateActivitySidebar();
   updateStreak();
 }
+async function cmd_rate() {
+  if (currentRole === "guest") {
+    addLine("Login required.", "error");
+    return;
+  }
 
+  const book = await selectBook((b) => canEditBook(b) && b.pagesRead >= b.totalPages);
+
+  if (!book) {
+    addLine("Cancelled.", "error");
+    return;
+  }
+
+  const ratingStr = await customPrompt("Rating (1-5):");
+  const rating = Number(ratingStr);
+
+  if (!rating || rating < 1 || rating > 5) {
+    addLine("Please enter a number between 1 and 5.", "error");
+    return;
+  }
+
+  book.rating = rating;
+  book.lastUpdate = new Date().toISOString();
+  await saveBookToFirebase(book);
+
+  addLine(`Rated "${book.title}": ${"⭐".repeat(rating)}`, "success");
+}
 // ---------- COMMAND DISPATCH ----------
 async function handleCommand(input) {
   const raw = input.trim();
@@ -2000,6 +2032,7 @@ async function handleCommand(input) {
     case "debugcomments": cmd_debug_comments(args); break;
     case "cleanevents": await cmd_cleanevents(args); break;
     case "viewvisits": await cmd_viewvisits(args); break;
+    case "rate": await cmd_rate(); break;  
     default:
       addLine("Unknown command: " + cmd, "error");
   }
@@ -2114,6 +2147,7 @@ async function init() {
 }
 
 init();
+
 
 
 
