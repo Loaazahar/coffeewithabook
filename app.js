@@ -85,9 +85,6 @@ if (isPassword) {
 
 modalOverlay.classList.add("active");
 
-// Force browser to recognize the new attributes
-modalInput.blur();
-setTimeout(() => modalInput.focus(), 50);
     }
 
     function onOk() {
@@ -2155,6 +2152,7 @@ async function init() {
 }
 
 init();
+
 
 
 
