@@ -66,6 +66,10 @@ function customPrompt(title, isPassword = false) {
   return new Promise((resolve) => {
     modalTitle.textContent = title;
     modalInput.type = isPassword ? "password" : "text";
+    modalInput.setAttribute("autocomplete", isPassword ? "off" : "on");
+    modalInput.setAttribute("autocorrect", isPassword ? "off" : "on");
+    modalInput.setAttribute("autocapitalize", isPassword ? "off" : "sentences");
+    modalInput.setAttribute("inputmode", "text");
     modalInput.value = "";
     modalOverlay.classList.add("active");
     modalInput.focus();
@@ -2110,6 +2114,7 @@ async function init() {
 }
 
 init();
+
 
 
 
