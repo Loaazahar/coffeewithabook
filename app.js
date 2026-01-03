@@ -73,6 +73,13 @@ function customPrompt(title, isPassword = false) {
     modalInput.value = "";
     modalOverlay.classList.add("active");
     modalInput.focus();
+
+    function cleanup() {
+      modalOverlay.classList.remove("active");
+      modalOk.removeEventListener("click", onOk);
+      modalCancel.removeEventListener("click", onCancel);
+      modalInput.removeEventListener("keydown", onKey);
+      inputEl.focus();
     }
 
     function onOk() {
@@ -2140,6 +2147,7 @@ async function init() {
 }
 
 init();
+
 
 
 
