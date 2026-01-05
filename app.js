@@ -2090,17 +2090,24 @@ async function cmd_viewvisits(args) {
         language === "ko" ? "ko-KR" : language === "ja" ? "ja-JP" : "en-US"
       );
       const browser = v.userAgent?.includes("Mobile") ? "📱" : "💻";
-      addLine(`${browser} ${time} | ${v.language} | ${v.referrer}`);
+      addLine(`${browser} ${time} | ${v.country || v.language} | ${v.referrer}`);
     });
   } catch (e) {
     addLine("Error loading visits: " + e.message, "error");
   }
 }
 async function logVisit() {
+  let country = "Unknown";
+  try {
+    const geo = await fetch("https://ipapi.co/json/").then(r => r.json());
+    country = geo.country_name || geo.country_code || "Unknown";
+  } catch (e) {}
+
   await db.collection("visits").add({
     timestamp: new Date().toISOString(),
     userAgent: navigator.userAgent,
     language: navigator.language,
+    country: country,
     referrer: document.referrer || "direct"
   });
 }
@@ -2150,6 +2157,7 @@ async function init() {
 }
 
 init();
+
 
 
 
