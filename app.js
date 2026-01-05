@@ -239,12 +239,7 @@ async function deleteBookFromFirebase(book) {
 
 async function logEventToFirebase(ev) {
   ev.timestamp = ev.timestamp || new Date().toISOString();
-  const docRef = await db.collection("events").add(ev);
-  ev.docId = docRef.id;
-  events.unshift(ev);
-  renderFeed();
-  updateActivitySidebar();
-  updateStreak();
+  await db.collection("events").add(ev);
 }
 
 // ---------- MIGRATION: localStorage -> Firebase ----------
@@ -1558,6 +1553,8 @@ async function cmd_login() {
   }
   currentUser = username;
   currentRole = u.role;
+  commandHistory = u.commandHistory || [];
+  historyIndex = commandHistory.length;
   updateUserLabel();
   updateSessionInfo();
   updateStreak();
@@ -1567,6 +1564,8 @@ async function cmd_login() {
 function cmd_logout() {
   currentUser = "guest";
   currentRole = "guest";
+  commandHistory = [];
+  historyIndex = -1;
   updateUserLabel();
   updateSessionInfo();
   updateStreak();
@@ -2006,7 +2005,13 @@ async function handleCommand(input) {
   if (!raw) return;
   
   commandHistory.push(raw);
+  if (commandHistory.length > 100) commandHistory.shift();
   historyIndex = commandHistory.length;
+  
+  if (currentUser !== "guest" && users[currentUser]) {
+    users[currentUser].commandHistory = commandHistory;
+    saveUserToFirebase(currentUser, users[currentUser]);
+  }
   
   addLine("> " + raw);
 
@@ -2157,6 +2162,7 @@ async function init() {
 }
 
 init();
+
 
 
 
