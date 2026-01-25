@@ -37,7 +37,7 @@ const statPagesEl = document.getElementById("stat-pages");
 const recentUpdateEl = document.getElementById("recentUpdate");
 const sessionInfoEl = document.getElementById("sessionInfo");
 const weatherDataDaeguEl = document.getElementById("weatherDataDaegu");
-const weatherDataKansaiEl = document.getElementById("weatherDataKansai");
+const weatherDataKobeEl = document.getElementById("weatherDataKobe");
 const feedOutputEl = document.getElementById("feedOutput");
 const streakTextEl = document.getElementById("streakText");
 const streakGraphEl = document.getElementById("streakGraph");
@@ -412,7 +412,7 @@ function updateUILabels() {
   t("streakLabel", "READING STREAK", "읽기 기록", "読書記録");
   t("lastUpdateLabel", "RECENT ACTIVITY", "최근 활동", "最近のアクティビティ");
   t("weatherTitleDaegu", "DAEGU WEATHER", "대구 날씨", "大邱の天気");
-  t("weatherTitleKansai", "KANSAI WEATHER", "간사이 날씨", "関西の天気");
+  t("weatherTitleKobe", "KOBE WEATHER", "고베 날씨", "神戸の天気");
   t("lblBooks", "Books", "책 수", "冊数");
   t("lblFinished", "Finished", "다 읽음", "読了");
   t("lblProgress", "In Progress", "진행중", "進行中");
@@ -812,8 +812,8 @@ function formatDateFull(date) {
 const DAEGU_LAT = 35.8714;
 const DAEGU_LON = 128.6014;
 
-const KANSAI_LAT = 34.6937;
-const KANSAI_LON = 135.5023;
+const KOBE_LAT = 34.6913;
+const KOBE_LON = 135.1830;
 
 // ---------- QUOTES POOL ----------
 const QUOTES_POOL = [
@@ -1356,7 +1356,7 @@ function getMoodFromWeatherCode(w) {
 
 async function fetchWeather() {
   const daeguCode = await fetchWeatherForCity(DAEGU_LAT, DAEGU_LON, weatherDataDaeguEl, "Daegu");
-  await fetchWeatherForCity(KANSAI_LAT, KANSAI_LON, weatherDataKansaiEl, "Kansai");
+  await fetchWeatherForCity(KOBE_LAT, KOBE_LON, weatherDataKobeEl, "Kobe");
   
   renderCurrentReaders();
   renderQuote();
@@ -2162,6 +2162,7 @@ async function init() {
 }
 
 init();
+
 
 
 
